@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TermChat is a terminal-based multi-provider AI chat application built with Bun. It supports real-time streaming conversations with Anthropic Claude and OpenAI GPT models through a terminal interface.
+TermChat is a terminal-based multi-provider AI chat application built with Bun and Ink (React-based TUI). It supports real-time streaming conversations with Anthropic Claude and OpenAI GPT models through a clean, interactive terminal interface.
 
 ## Commands
 
@@ -15,42 +15,81 @@ bun start             # Run the application (same as bun run src/index.ts)
 ```
 
 ### Configuration Setup
+First-time setup runs automatically on launch if no API keys are configured. Alternatively:
 ```bash
 cp config.example.json config.json
-# Then edit config.json to add API keys for desired providers
+# Edit config.json to add API keys, or use /configure command in-app
 ```
 
-## Architecture
+## Architecture Overview
 
-### Core Components
+### UI Layer (Ink/React)
 
 **Entry Point**: [src/index.ts](src/index.ts)
-- Application initialization and main event loop
-- Sets up readline interface with command autocomplete
-- Manages streaming response display with spinner and cursor control
-- Handles graceful exit (Ctrl+C, Ctrl+D, /exit)
+- Loads configuration and runs first-time setup if needed
+- Clears screen and renders Ink UI using `render()`
+- Passes ChatManager, CommandHandler, and config as props to React component
+
+**ChatUI Component**: [src/components/ChatUI.tsx](src/components/ChatUI.tsx)
+- Main React component for the TUI
+- Uses Ink's `Box`, `Text`, `TextInput`, and `Spinner` components
+- Manages local state for messages, input, and loading indicators
+- Handles keyboard shortcuts (Ctrl+C to exit)
+- Streams AI responses by updating message state in real-time
+- Shows animated spinner while waiting for first AI response chunk
+
+**Message Component**: [src/components/Message.tsx](src/components/Message.tsx)
+- Displays individual messages with role-based colors (user/assistant/system)
+- Maps ANSI color codes from theme config to Ink color names
+- System messages have no prefix label for clean UI
+
+### Core Services
 
 **ChatManager**: [src/chat.ts](src/chat.ts)
-- Manages conversation history and message metadata (timestamps, token counts)
 - Provider-agnostic interface for sending messages
+- Maintains conversation history with metadata (timestamps, token counts)
 - Supports hot-swapping providers and models at runtime
-- Token estimation using rough approximation (4 chars ≈ 1 token)
+- Streams responses via callback for real-time updates
+- Calculates session costs based on token usage and model pricing
 
 **CommandHandler**: [src/commands.ts](src/commands.ts)
-- Slash command system (`/help`, `/model`, `/provider`, `/theme`, `/export`, etc.)
+- Slash command system: `/help`, `/model`, `/provider`, `/theme`, `/export`, `/setup`, `/clear`, `/cost`, etc.
 - Handles runtime model/provider/theme switching without restart
 - Clears conversation history when switching models or providers
 - Exports conversations to timestamped files in `conversations/` directory
 
-**ConfigLoader**: [src/config.ts](src/config.ts)
-- Loads and validates `config.json`
-- Saves configuration changes (model, provider, theme selections persist)
-- Provides access to active provider, model, and theme
+**SetupManager**: [src/setup.ts](src/setup.ts)
+- Interactive first-time setup wizard
+- Prompts user to configure providers by number selection (1, 2, or "all")
+- Validates and saves API keys to config.json
+- Also handles `/configure` and `/setup` commands for runtime configuration
 
-**UIRenderer**: [src/ui.ts](src/ui.ts)
-- Terminal UI rendering with ANSI colors
-- Theme management with 5 built-in color schemes
-- Formats headers, footers, errors, and messages
+### Configuration System
+
+**ConfigLoader**: [src/config.ts](src/config.ts)
+- Loads `config.json` (user settings) and merges with `src/defaults.json` (version-controlled)
+- Separation of concerns: defaults.json has providers/models/themes, config.json has API keys + selections
+- Automatically migrates legacy config format
+- Validates configuration and provides helpful error messages
+- Saves changes when user switches providers/models/themes
+
+**Two-file system**:
+- `src/defaults.json` - Version controlled, contains provider definitions, models, themes (shipped with app)
+- `config.json` - Gitignored, contains API keys and user preferences (activeProvider, activeModel, activeTheme)
+
+Structure:
+```json
+// config.json (UserConfig)
+{
+  "apiKeys": {
+    "anthropic": "sk-...",
+    "openai": "sk-..."
+  },
+  "activeProvider": "anthropic",
+  "activeModel": { "id": "claude-sonnet-4-5-20250929", "display_name": "Claude Sonnet 4.5" },
+  "activeTheme": "theme-1"
+}
+```
 
 ### Provider System
 
@@ -61,68 +100,65 @@ cp config.example.json config.json
 **BaseProvider**: [src/providers/base.ts](src/providers/base.ts)
 - Abstract class defining provider interface
 - All providers implement `sendMessage()` for streaming responses
-- Providers manage their own model IDs and can be hot-swapped
+- Returns usage data (inputTokens, outputTokens)
 
 **Provider Implementations**:
-- [src/providers/anthropic.ts](src/providers/anthropic.ts) - Anthropic Claude integration
-- [src/providers/openai.ts](src/providers/openai.ts) - OpenAI GPT integration
+- [src/providers/anthropic.ts](src/providers/anthropic.ts) - Uses @anthropic-ai/sdk
+- [src/providers/openai.ts](src/providers/openai.ts) - Uses openai SDK
 
 ### Type Definitions
 
-[src/types.ts](src/types.ts) contains all TypeScript interfaces:
-- `Provider`, `Model` - Multi-provider configuration
+[src/types.ts](src/types.ts) contains TypeScript interfaces:
+- `DefaultsConfig` - Structure of defaults.json (providers, themes)
+- `UserConfig` - Structure of config.json (API keys, selections)
+- `AppConfig` - Merged configuration used by application
+- `Provider`, `ProviderDefinition`, `Model` - Multi-provider configuration
 - `Theme`, `ThemeColors` - Color theme system
-- `AppConfig`, `Config` - Application configuration
-- `Message`, `MessageWithMetadata` - Chat history
+- `Message`, `MessageWithMetadata` - Chat history with metadata
 
-### Configuration System
+## Key Architectural Patterns
 
-`config.json` structure:
-```json
-{
-  "providers": [/* Provider configs with models and API keys */],
-  "config": {
-    "activeProvider": "provider-id",
-    "activeModel": { "id": "...", "display_name": "..." },
-    "activeTheme": "theme-id"
-  },
-  "themes": [/* Theme definitions */]
-}
-```
-
-- Each provider has multiple models that can be switched on-the-fly
-- Changes to active provider/model/theme persist to `config.json` automatically
-- Switching models or providers clears conversation history
-
-## Key Patterns
-
-### Hot-Swapping
-The application supports runtime changes to provider, model, and theme without restart:
+### Hot-Swapping Without Restart
+The application supports runtime changes to provider, model, and theme:
 1. User executes command (e.g., `/model claude-opus-4-1-20250805`)
-2. `CommandHandler` validates new selection
-3. Config updated in memory and saved to `config.json`
+2. `CommandHandler` validates selection against available models
+3. Config updated in memory and saved to `config.json` via ConfigLoader
 4. `ChatManager.setProvider()` or `ChatManager.setModel()` updates active instance
-5. UI updates (theme) or history clears (model/provider)
+5. For theme changes, `ChatUI.setTheme()` updates UI colors
+6. Conversation history clears when switching models or providers (different contexts)
 
-### Streaming Display
-1. User input submitted via readline
-2. Processing flag set to ignore additional input
-3. Spinner displayed while waiting for first chunk
-4. Chunks streamed to stdout with ANSI colors
-5. Cursor hidden during streaming, shown after completion
-6. Processing flag cleared to accept new input
+### React State-Based Streaming
+AI responses stream in real-time using React state:
+1. User submits message via TextInput component
+2. Message added to state, empty AI message placeholder created
+3. Loading spinner shown (just dots, no label)
+4. `ChatManager.sendMessage()` called with callback
+5. Each chunk updates the last message in state array
+6. First chunk hides spinner, subsequent chunks accumulate
+7. React re-renders on each state update, user sees text appear progressively
+
+### Config Separation (Defaults vs User Settings)
+- `defaults.json` is version controlled and contains provider/model definitions
+- `config.json` is gitignored and contains user's API keys + selections
+- ConfigLoader merges them on startup
+- New providers/models can be added to defaults.json without affecting user configs
+- Users never edit defaults.json, only config.json (or use /configure command)
 
 ### Provider Abstraction
-All providers implement `BaseProvider.sendMessage()` which:
-- Accepts full conversation history
-- Streams responses via callback with token counts
-- Returns complete response text
-- Each provider handles its own SDK integration and streaming format
+All providers implement `BaseProvider.sendMessage()`:
+- Accepts full conversation history array
+- Streams responses via callback: `(chunk: StreamChunk) => void`
+- Returns `{ response: string, usage: TokenUsage }`
+- Each provider handles its own SDK, request format, and streaming implementation
 
 ## Development Notes
 
-- Uses Bun runtime (not Node.js)
-- Conversation exports saved to `conversations/` (auto-created)
-- Token estimates are rough approximations (4 chars per token)
-- `intro.txt` displays ASCII art at startup (optional file)
-- Version number stored in [src/version.ts](src/version.ts)
+- **Runtime**: Bun (not Node.js)
+- **UI Framework**: Ink 6.3.1 (React-based TUI, same as Claude Code uses)
+- **No double-input issues**: Ink's TextInput handles input correctly (previous blessed library had bugs)
+- **Word wrapping**: Handled automatically by Ink's TextInput component
+- **Conversation exports**: Saved to `conversations/` directory (auto-created)
+- **Token estimates**: Rough approximation (4 chars ≈ 1 token) for context limits
+- **Intro ASCII art**: Optional `intro.txt` file displays on startup if present
+- **Version**: Stored in [src/version.ts](src/version.ts)
+- **Setup flow**: Automatic first-time setup if no API keys found, can re-run with `/setup` command
