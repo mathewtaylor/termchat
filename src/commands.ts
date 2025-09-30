@@ -58,7 +58,7 @@ export class CommandHandler {
 
       case '/model':
       case '/models':
-        return this.handleModel(args);
+        return await this.handleModel(args);
 
       case '/export':
         return await this.handleExport(args);
@@ -115,7 +115,7 @@ Available Commands:
   /help              Show this help message
   /exit or /quit     Exit the application
   /clear             Clear conversation history
-  /model [name]      Show current model or switch to a different model
+  /model [model-id]  Show current model or switch models instantly
   /theme [theme-id]  Show current theme or switch themes instantly
   /export [filename] Export conversation to conversations/ folder (auto-timestamped)
   /history           Show conversation statistics
@@ -133,7 +133,7 @@ Available Commands:
   /**
    * Handle /model command
    */
-  private handleModel(args: string[]): CommandResult {
+  private async handleModel(args: string[]): Promise<CommandResult> {
     const activeProvider = this.config.providers.find(
       p => p.id === this.config.config.activeProvider
     );
@@ -149,7 +149,10 @@ Available Commands:
     if (args.length === 0) {
       const currentModel = this.config.config.activeModel;
       const availableModels = activeProvider.models
-        .map(m => `  • ${m.display_name} (${m.id})`)
+        .map(m => {
+          const active = m.id === currentModel.id ? '* ' : '  ';
+          return `${active}${m.display_name} (${m.id})`;
+        })
         .join('\n');
 
       return {
@@ -162,16 +165,49 @@ Available Models:
 ${availableModels}
 
 To switch models, use: /model <model-id>
-Note: Model switching requires app restart to take effect.
 `,
       };
     }
 
-    // Model switching would require config file update
-    return {
-      success: false,
-      message: 'Model switching is not yet implemented. Please update config.json manually.',
-    };
+    // Model switching implementation
+    const modelId = args[0];
+
+    // Validate model exists
+    const newModel = activeProvider.models.find(m => m.id === modelId);
+    if (!newModel) {
+      return {
+        success: false,
+        message: `Model "${modelId}" not found. Use /model to see available models.`,
+      };
+    }
+
+    try {
+      // Update config in memory
+      this.config.config.activeModel = {
+        id: newModel.id,
+        display_name: newModel.display_name,
+      };
+
+      // Save to file
+      await this.configLoader.save(this.config);
+
+      // Update ChatManager with new model
+      this.chatManager.setModel(newModel.id);
+
+      // Clear conversation history (different models have different contexts)
+      this.chatManager.clearHistory();
+
+      return {
+        success: true,
+        message: `✓ Switched to ${newModel.display_name}\n  Conversation history has been cleared.`,
+        shouldClearScreen: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to switch model: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 
   /**

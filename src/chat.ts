@@ -12,6 +12,20 @@ export class ChatManager {
     this.modelId = modelId;
   }
 
+  /**
+   * Update the model ID for future conversations
+   */
+  setModel(modelId: string): void {
+    this.modelId = modelId;
+  }
+
+  /**
+   * Get the current model ID
+   */
+  getModelId(): string {
+    return this.modelId;
+  }
+
   async sendMessage(
     userMessage: string,
     onStreamChunk: (text: string, tokenCount: number) => void
