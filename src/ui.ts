@@ -108,4 +108,18 @@ export class UIRenderer {
   renderError(message: string): string {
     return `❌ ${message}`;
   }
+
+  /**
+   * Update the theme
+   */
+  setTheme(theme?: Theme): void {
+    this.theme = theme;
+  }
+
+  /**
+   * Get the AI color from current theme
+   */
+  getAIColor(): string {
+    return this.theme?.fontColours.ai.value || '';
+  }
 }

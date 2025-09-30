@@ -4,7 +4,7 @@ import { ConfigLoader } from './config';
 import { ChatManager } from './chat';
 import { UIRenderer, type MessageDisplay } from './ui';
 import { CommandHandler } from './commands';
-import type { AppConfig, Theme } from './types';
+import type { AppConfig } from './types';
 
 async function main() {
   // Load configuration
@@ -12,7 +12,6 @@ async function main() {
   let chatManager: ChatManager;
   let ui: UIRenderer;
   let commandHandler: CommandHandler;
-  let activeTheme: Theme | undefined;
 
   try {
     const configLoader = new ConfigLoader();
@@ -24,11 +23,11 @@ async function main() {
       process.exit(1);
     }
 
-    activeTheme = configLoader.getActiveTheme(config);
+    const activeTheme = configLoader.getActiveTheme(config);
 
     chatManager = new ChatManager(activeProvider.apiKey, config.config.activeModel.id);
     ui = new UIRenderer(activeTheme);
-    commandHandler = new CommandHandler(chatManager, config);
+    commandHandler = new CommandHandler(chatManager, config, configLoader, ui);
 
     // Initial UI render
     ui.clearScreen();
@@ -107,9 +106,9 @@ async function main() {
 
     // Prepare for assistant response (no need to echo user input, they just typed it)
     console.log(''); // Add spacing before AI response
-    const color = activeTheme?.fontColours.ai.value || '';
+    const color = ui.getAIColor();
     const reset = '\x1b[0m';
-    process.stdout.write(`${color}🤖${reset}\n`);
+    process.stdout.write(`${color}🤖${reset} `);
 
     const assistantStartTime = new Date();
     let assistantContent = '';

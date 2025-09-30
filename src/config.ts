@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { resolve } from 'path';
 import type { AppConfig, Provider, Theme } from './types';
 
@@ -112,5 +112,17 @@ export class ConfigLoader {
       return undefined;
     }
     return config.themes?.find(t => t.id === config.config.activeTheme);
+  }
+
+  async save(config: AppConfig): Promise<void> {
+    try {
+      const jsonContent = JSON.stringify(config, null, 2);
+      await writeFile(this.configPath, jsonContent, 'utf-8');
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Failed to save config: ${error.message}`);
+      }
+      throw new Error('Unknown error saving config');
+    }
   }
 }

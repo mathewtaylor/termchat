@@ -4,6 +4,8 @@
 
 import type { AppConfig } from './types';
 import { ChatManager } from './chat';
+import { ConfigLoader } from './config';
+import { UIRenderer } from './ui';
 import { writeFile } from 'fs/promises';
 
 export interface CommandResult {
@@ -17,10 +19,14 @@ export interface CommandResult {
 export class CommandHandler {
   private chatManager: ChatManager;
   private config: AppConfig;
+  private configLoader: ConfigLoader;
+  private ui: UIRenderer;
 
-  constructor(chatManager: ChatManager, config: AppConfig) {
+  constructor(chatManager: ChatManager, config: AppConfig, configLoader: ConfigLoader, ui: UIRenderer) {
     this.chatManager = chatManager;
     this.config = config;
+    this.configLoader = configLoader;
+    this.ui = ui;
   }
 
   /**
@@ -64,7 +70,7 @@ export class CommandHandler {
 
       case '/theme':
       case '/themes':
-        return this.handleTheme(args);
+        return await this.handleTheme(args);
 
       default:
         return {
@@ -250,7 +256,7 @@ Current Settings:
   /**
    * Handle /theme command
    */
-  private handleTheme(args: string[]): CommandResult {
+  private async handleTheme(args: string[]): Promise<CommandResult> {
     // If no args, show current theme and available themes
     if (args.length === 0) {
       const activeThemeId = this.config.config.activeTheme;
@@ -284,16 +290,43 @@ Available Themes:
 ${themeList}
 
 To switch themes, use: /theme <theme-id>
-Note: Theme switching requires config.json update and app restart.
 `,
       };
     }
 
-    // Theme switching would require config file update
-    return {
-      success: false,
-      message: 'Theme switching is not yet implemented. Please update config.json manually and restart the app.',
-    };
+    // Theme switching implementation
+    const themeId = args[0];
+    const availableThemes = this.config.themes || [];
+
+    // Validate theme exists
+    const newTheme = availableThemes.find(t => t.id === themeId);
+    if (!newTheme) {
+      return {
+        success: false,
+        message: `Theme "${themeId}" not found. Use /theme to see available themes.`,
+      };
+    }
+
+    try {
+      // Update config in memory
+      this.config.config.activeTheme = themeId;
+
+      // Save to file
+      await this.configLoader.save(this.config);
+
+      // Update UI renderer with new theme
+      this.ui.setTheme(newTheme);
+
+      return {
+        success: true,
+        message: `✓ Theme switched to "${newTheme.name}"`,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to switch theme: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 
   /**
