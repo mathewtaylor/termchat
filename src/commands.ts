@@ -9,7 +9,7 @@ import { UIRenderer } from './ui';
 import { ProviderFactory } from './providers/factory';
 import { SetupManager } from './setup';
 import { VERSION } from './version';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, readFile } from 'fs/promises';
 
 export interface CommandResult {
   success: boolean;
@@ -112,7 +112,7 @@ export class CommandHandler {
         return await this.handleTheme(args);
 
       case '/version':
-        return this.handleVersion();
+        return await this.handleVersion();
 
       default:
         return {
@@ -630,15 +630,20 @@ Current Settings:
   /**
    * Handle /version command
    */
-  private handleVersion(): CommandResult {
-    return {
-      success: true,
-      message: `
-TermChat v${VERSION}
-
-A multi-provider terminal chat application supporting Anthropic and OpenAI.
-`,
-    };
+  private async handleVersion(): Promise<CommandResult> {
+    try {
+      const releaseNotes = await readFile('./release-notes.txt', 'utf-8');
+      return {
+        success: true,
+        message: releaseNotes,
+      };
+    } catch (error) {
+      // Fallback if release-notes.txt is not found
+      return {
+        success: true,
+        message: `TermChat v${VERSION}\n\nA multi-provider terminal chat application supporting Anthropic and OpenAI.`,
+      };
+    }
   }
 
   /**

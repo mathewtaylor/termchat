@@ -1,0 +1,74 @@
+TERMCHAT RELEASE NOTES
+======================
+
+Version 2.0.0 - 2025-01-30
+--------------------------
+
+Major UI Overhaul
+
+Added:
+  • Real-time word wrapping while typing
+  • Real-time token usage tracking in status bar
+  • Session cost calculation and display
+  • Model name display in status bar
+  • Horizontal separator line below intro
+  • Enhanced loading indicators with proper alignment
+  • Right-aligned timestamps on messages
+
+Changed:
+  • Complete UI redesign using Ink/React framework
+  • Chat interface with separated history and input areas
+  • Message display now shows clean role labels (You/AI)
+  • System messages styled with off-white color
+  • Status bar shows keyboard shortcuts and model info
+  • Improved visual consistency with gray borders
+
+Fixed:
+  • Configuration system now properly merges pricing data
+  • Word wrapping works correctly during typing
+  • Input text no longer displays twice
+  • Gaps between UI sections eliminated
+
+
+Version 1.1.0 - 2024-12-15
+--------------------------
+
+Multi-Provider Support
+
+Added:
+  • OpenAI provider support (GPT-5, GPT-5 Mini, GPT-5 Nano, GPT-5 Codex)
+  • Hot-swapping between providers at runtime
+  • Interactive first-time setup wizard
+  • Numbered provider selection in setup
+  • Configuration migration support
+
+Changed:
+  • Provider-agnostic chat interface
+  • Enhanced configuration system with provider separation
+
+
+Version 1.0.0 - 2024-11-01
+--------------------------
+
+Initial Release
+
+Features:
+  • Anthropic Claude integration (Sonnet 4.5, Opus 4.1)
+  • Real-time streaming responses
+  • Conversation history management
+  • Token usage tracking and estimation
+  • Cost calculation based on model pricing
+  • 5 color themes for customization
+  • Export conversations to timestamped files
+  • Configuration management via config.json
+  • Slash command system:
+    /help     - Show available commands
+    /clear    - Clear conversation history
+    /export   - Export conversation to file
+    /model    - Switch AI model
+    /provider - Switch provider
+    /theme    - Change color theme
+    /history  - View conversation stats
+    /cost     - Show session cost breakdown
+    /version  - Show version information
+    /exit     - Exit application

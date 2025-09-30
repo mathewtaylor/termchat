@@ -34,6 +34,8 @@ export const ChatUI: React.FC<ChatUIProps> = ({
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [sessionCost, setSessionCost] = useState<number | null>(null);
   const { exit } = useApp();
 
   // Handle global keyboard shortcuts
@@ -43,6 +45,33 @@ export const ChatUI: React.FC<ChatUIProps> = ({
       process.exit(0);
     }
   });
+
+  /**
+   * Format token count for display
+   */
+  const formatTokens = (tokens: number): string => {
+    if (tokens >= 1000) {
+      return `${(tokens / 1000).toFixed(1)}K`;
+    }
+    return tokens.toString();
+  };
+
+  /**
+   * Get status bar model info with tokens and cost
+   */
+  const getModelInfo = (): string => {
+    let info = config.config.activeModel.display_name;
+
+    if (totalTokens > 0) {
+      info += ` • ${formatTokens(totalTokens)} tokens`;
+    }
+
+    if (sessionCost !== null) {
+      info += ` • $${sessionCost.toFixed(4)}`;
+    }
+
+    return info;
+  };
 
   /**
    * Handle message submission
@@ -107,6 +136,14 @@ export const ChatUI: React.FC<ChatUIProps> = ({
 
       setIsProcessing(false);
       setIsLoading(false);
+
+      // Update token and cost tracking
+      const inputTokens = chatManager.getTotalInputTokens();
+      const outputTokens = chatManager.getTotalOutputTokens();
+      setTotalTokens(inputTokens + outputTokens);
+
+      const cost = chatManager.getSessionCost(config.config.activeModel.pricing);
+      setSessionCost(cost);
     } catch (error) {
       setIsProcessing(false);
       setIsLoading(false);
@@ -132,6 +169,8 @@ export const ChatUI: React.FC<ChatUIProps> = ({
       // Handle clear screen
       if (result.shouldClearScreen) {
         setMessages([]);
+        setTotalTokens(0);
+        setSessionCost(null);
       }
 
       // Display command result
@@ -164,12 +203,26 @@ export const ChatUI: React.FC<ChatUIProps> = ({
   return (
     <Box flexDirection="column" width="100%" height="100%">
       {/* Chat History */}
-      <Box flexDirection="column" flexGrow={1} paddingX={1} paddingY={1}>
+      <Box flexDirection="column" flexGrow={1} borderStyle="single" borderBottom={false} borderColor="gray" paddingX={1} paddingY={1}>
         {messages.map((msg, i) => (
-          <Message key={i} {...msg} theme={theme} />
+          <React.Fragment key={i}>
+            <Message {...msg} theme={theme} />
+            {i === 0 && msg.role === 'system' && (
+              <Box
+                width="100%"
+                borderStyle="single"
+                borderTop={false}
+                borderBottom={true}
+                borderLeft={false}
+                borderRight={false}
+                borderColor="gray"
+                marginBottom={1}
+              />
+            )}
+          </React.Fragment>
         ))}
         {isLoading && (
-          <Box marginTop={1}>
+          <Box>
             <Text color="green">
               <Spinner type="dots" />
             </Text>
@@ -178,7 +231,7 @@ export const ChatUI: React.FC<ChatUIProps> = ({
       </Box>
 
       {/* Input Box */}
-      <Box borderStyle="single" borderColor="gray" paddingX={1}>
+      <Box borderStyle="single" borderTop={true} borderBottom={true} borderColor="gray" paddingX={1}>
         <TextInput
           value={input}
           onChange={setInput}
@@ -186,14 +239,14 @@ export const ChatUI: React.FC<ChatUIProps> = ({
             handleSubmit(value);
             setInput('');
           }}
-          placeholder="Type your message..."
+          placeholder="Enter message..."
         />
       </Box>
 
       {/* Status Bar */}
       <Box paddingX={1} justifyContent="space-between">
-        <Text dimColor>[Enter] Send • [Esc] Clear • [Ctrl+C] Exit</Text>
-        <Text dimColor>{config.config.activeModel.display_name}</Text>
+        <Text dimColor>[Enter] Send  [Esc] Clear  [↑↓] Scroll  [/exit] Exit</Text>
+        <Text dimColor>{getModelInfo()}</Text>
       </Box>
     </Box>
   );

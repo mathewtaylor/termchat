@@ -11,40 +11,47 @@ export interface MessageProps {
 
 export const Message: React.FC<MessageProps> = ({ role, content, timestamp, theme }) => {
   let color = 'white';
-  let prefix = '';
-  let showPrefix = true;
+  let label = '';
 
   if (role === 'user') {
-    prefix = '💬 You:';
+    label = 'You';
     // Use theme color if available, otherwise default to cyan
     color = theme?.fontColours.user.value ? extractColorFromAnsi(theme.fontColours.user.value) : 'cyan';
   } else if (role === 'assistant') {
-    prefix = '🤖 AI:';
+    label = 'AI';
     color = theme?.fontColours.ai.value ? extractColorFromAnsi(theme.fontColours.ai.value) : 'green';
   } else {
-    // System messages don't show a prefix
-    showPrefix = false;
-    color = 'whiteBright';
+    // System messages - simple display without vertical bar structure
+    return (
+      <Box marginBottom={1}>
+        <Text color="whiteBright">{content}</Text>
+      </Box>
+    );
   }
 
-  const timeStr = timestamp ? timestamp.toLocaleTimeString() : '';
+  const timeStr = timestamp ? timestamp.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }) : '';
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      {showPrefix && (
-        <Box>
-          <Text color={color} bold>
-            {prefix}
-          </Text>
-          {timestamp && (
-            <Text color="gray" dimColor>
-              {' '}
-              {timeStr}
-            </Text>
-          )}
+      {/* Main message line */}
+      <Box>
+        <Text color={color} bold>
+          {label}
+        </Text>
+        <Box marginLeft={2}>
+          <Text color={color}>{content}</Text>
+        </Box>
+      </Box>
+      {/* Timestamp line */}
+      {timestamp && (
+        <Box justifyContent="flex-end">
+          <Text color="gray" dimColor>{timeStr}</Text>
         </Box>
       )}
-      <Text color={color}>{content}</Text>
     </Box>
   );
 };

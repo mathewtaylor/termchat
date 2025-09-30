@@ -143,11 +143,24 @@ export class ConfigLoader {
       };
     });
 
+    // Enrich activeModel with pricing information from defaults
+    let enrichedActiveModel = userConfig.activeModel;
+    for (const provider of defaults.providers) {
+      const modelWithPricing = provider.models.find(m => m.id === userConfig.activeModel.id);
+      if (modelWithPricing) {
+        enrichedActiveModel = {
+          ...userConfig.activeModel,
+          pricing: modelWithPricing.pricing,
+        };
+        break;
+      }
+    }
+
     return {
       providers,
       config: {
         activeProvider: userConfig.activeProvider,
-        activeModel: userConfig.activeModel,
+        activeModel: enrichedActiveModel,
         activeTheme: userConfig.activeTheme,
       },
       themes: defaults.themes,
