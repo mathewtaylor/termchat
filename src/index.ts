@@ -1,13 +1,16 @@
 import * as readline from 'readline';
 import { ConfigLoader } from './config';
 import { ChatManager } from './chat';
+import { UIRenderer, type MessageDisplay } from './ui';
+import { CommandHandler } from './commands';
+import type { AppConfig } from './types';
 
 async function main() {
-  console.log('🤖 Terminal Chat - Starting...\n');
-
   // Load configuration
-  let config;
+  let config: AppConfig;
   let chatManager: ChatManager;
+  let ui: UIRenderer;
+  let commandHandler: CommandHandler;
 
   try {
     const configLoader = new ConfigLoader();
@@ -19,13 +22,16 @@ async function main() {
       process.exit(1);
     }
 
-    console.log(`✓ Connected to: ${config.config.activeModel.display_name}`);
-    console.log(`✓ Provider: ${activeProvider.name}\n`);
-    console.log('Type your message and press Enter. Type /exit to quit.\n');
-    console.log('─'.repeat(50));
-    console.log();
-
     chatManager = new ChatManager(activeProvider.apiKey, config.config.activeModel.id);
+    ui = new UIRenderer();
+    commandHandler = new CommandHandler(chatManager, config);
+
+    // Initial UI render
+    ui.clearScreen();
+    console.log(ui.renderHeader(config.config.activeModel.display_name, activeProvider.name));
+    console.log('');
+    console.log(ui.renderInfo('Welcome to Terminal Chat! Type /help for commands.'));
+    console.log('');
   } catch (error) {
     if (error instanceof Error) {
       console.error(`❌ Configuration Error: ${error.message}`);
@@ -39,50 +45,144 @@ async function main() {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: '\n💬 You: ',
   });
 
-  rl.prompt();
+  // Display footer
+  console.log(ui.renderFooter());
+
+  // Move cursor to input position
+  process.stdout.write('\x1b[2A'); // Move up 2 lines
+  process.stdout.write('\x1b[19C'); // Move right to after "💬 Your message: "
 
   rl.on('line', async (line: string) => {
     const input = line.trim();
 
-    // Check for exit command (only if it's the first text)
-    if (input === '/exit') {
-      console.log('\n👋 Goodbye!');
-      rl.close();
-      process.exit(0);
-    }
-
     if (!input) {
-      rl.prompt();
+      // Redraw footer and reposition cursor
+      process.stdout.write('\x1b[2A');
+      process.stdout.write('\x1b[19C');
       return;
     }
 
-    try {
-      process.stdout.write('\n🤖 Assistant: ');
+    // Clear the input line and footer
+    process.stdout.write('\x1b[2K\r'); // Clear current line
+    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
+    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
+    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
+    process.stdout.write('\x1b[3A'); // Move back up
 
-      await chatManager.sendMessage(input, (chunk) => {
-        process.stdout.write(chunk);
-      });
+    // Handle commands
+    if (commandHandler.isCommand(input)) {
+      try {
+        const result = await commandHandler.execute(input);
 
-      console.log('\n');
-      console.log('─'.repeat(50));
-    } catch (error) {
-      console.log('\n');
-      if (error instanceof Error) {
-        console.error(`\n❌ ${error.message}`);
-      } else {
-        console.error('\n❌ An unknown error occurred');
+        if (result.shouldClearScreen) {
+          ui.clearScreen();
+          console.log(ui.renderHeader(config.config.activeModel.display_name,
+            config.providers.find(p => p.id === config.config.activeProvider)?.name || 'Unknown'));
+          console.log('');
+        }
+
+        // Display command result
+        if (result.message) {
+          console.log(result.message);
+        }
+
+        if (result.shouldExit) {
+          rl.close();
+          process.exit(0);
+        }
+      } catch (error) {
+        console.log(ui.renderError(error instanceof Error ? error.message : 'Command failed'));
       }
-      console.log('─'.repeat(50));
+
+      console.log(ui.renderFooter());
+      process.stdout.write('\x1b[2A');
+      process.stdout.write('\x1b[19C');
+      return;
     }
 
-    rl.prompt();
+    // Display user message
+    const userMessage: MessageDisplay = {
+      role: 'user',
+      content: input,
+      timestamp: new Date(),
+    };
+    console.log(ui.renderMessageBubble(userMessage));
+    console.log('');
+
+    // Prepare for assistant response
+    const assistantStartTime = new Date();
+    let assistantContent = '';
+    let currentTokenCount = 0;
+
+    try {
+      await chatManager.sendMessage(input, (chunk, tokenCount) => {
+        assistantContent += chunk;
+        currentTokenCount = tokenCount;
+
+        // Update display (clear and redraw streaming message)
+        const streamingMessage: MessageDisplay = {
+          role: 'assistant',
+          content: assistantContent,
+          timestamp: assistantStartTime,
+          tokenCount: currentTokenCount,
+          isStreaming: true,
+        };
+
+        // Calculate how many lines to move up
+        const renderedBubble = ui.renderMessageBubble(streamingMessage);
+        const lineCount = renderedBubble.split('\n').length;
+
+        // Move cursor up and clear
+        if (assistantContent.length > chunk.length) {
+          process.stdout.write(`\x1b[${lineCount}A`);
+        }
+
+        // Render the updated bubble
+        process.stdout.write('\r' + renderedBubble + '\n');
+      });
+
+      // Final render without streaming indicator
+      const finalMessage: MessageDisplay = {
+        role: 'assistant',
+        content: assistantContent,
+        timestamp: assistantStartTime,
+        tokenCount: currentTokenCount,
+        isStreaming: false,
+      };
+
+      const finalBubble = ui.renderMessageBubble(finalMessage);
+      const lineCount = finalBubble.split('\n').length;
+      process.stdout.write(`\x1b[${lineCount + 1}A`);
+      console.log(finalBubble);
+      console.log('');
+
+    } catch (error) {
+      console.log('');
+      if (error instanceof Error) {
+        console.log(ui.renderError(error.message));
+      } else {
+        console.log(ui.renderError('An unknown error occurred'));
+      }
+      console.log('');
+    }
+
+    // Redraw footer and reposition cursor
+    console.log(ui.renderFooter());
+    process.stdout.write('\x1b[2A');
+    process.stdout.write('\x1b[19C');
   });
 
   rl.on('close', () => {
-    console.log('\n👋 Goodbye!');
+    console.log('\n\n👋 Goodbye!');
+    process.exit(0);
+  });
+
+  // Handle Ctrl+C gracefully
+  process.on('SIGINT', () => {
+    console.log('\n\n👋 Goodbye!');
+    rl.close();
     process.exit(0);
   });
 }
