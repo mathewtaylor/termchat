@@ -80,10 +80,18 @@ export class UIRenderer {
    */
   renderFooter(): string {
     const width = this.getTerminalWidth();
-    return [
-      '─'.repeat(Math.min(width, 60)),
-      'Type /help for commands',
-    ].join('\n');
+    const helpText = 'Type /help for commands';
+    const lineWidth = Math.min(width, 60);
+    const padding = lineWidth - helpText.length;
+
+    // Dim color for subtle separator
+    const dim = '\x1b[2m';
+    const reset = '\x1b[0m';
+
+    // Create line with help text on the right
+    const line = dim + '─'.repeat(Math.max(0, padding)) + reset + helpText;
+
+    return line;
   }
 
   /**
