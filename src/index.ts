@@ -109,7 +109,7 @@ async function main() {
     console.log(''); // Add spacing before AI response
     const color = activeTheme?.fontColours.ai.value || '';
     const reset = '\x1b[0m';
-    process.stdout.write(`${color}Claude:${reset}\n`);
+    process.stdout.write(`${color}🤖${reset}\n`);
 
     const assistantStartTime = new Date();
     let assistantContent = '';
