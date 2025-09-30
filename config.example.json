@@ -1,0 +1,26 @@
+{
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "models": [
+        {
+          "id": "claude-sonnet-4-5-20250929",
+          "display_name": "Claude Sonnet 4.5"
+        },
+        {
+          "id": "claude-opus-4-1-20250805",
+          "display_name": "Claude Opus 4.1"
+        }
+      ],
+      "apiKey": "your-api-key-here"
+    }
+  ],
+  "config": {
+    "activeProvider": "anthropic",
+    "activeModel": {
+      "id": "claude-sonnet-4-5-20250929",
+      "display_name": "Claude Sonnet 4.5"
+    }
+  }
+}
