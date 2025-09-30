@@ -15,9 +15,15 @@ export class OpenAIProvider extends BaseProvider {
 
   async sendMessage(
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
-    onStreamChunk: (chunk: { text: string; tokenCount: number }) => void
+    onStreamChunk: (chunk: { text: string; tokenCount: number }) => void,
+    signal?: AbortSignal
   ): Promise<string> {
     try {
+      // Check if already aborted
+      if (signal?.aborted) {
+        throw new Error('Request cancelled');
+      }
+
       // Convert conversation history to OpenAI format
       const messages: Array<OpenAI.Chat.ChatCompletionMessageParam> = conversationHistory.map(msg => ({
         role: msg.role,
@@ -35,6 +41,11 @@ export class OpenAIProvider extends BaseProvider {
 
       // Process the stream
       for await (const chunk of stream) {
+        // Check if aborted during streaming
+        if (signal?.aborted) {
+          throw new Error('Request cancelled');
+        }
+
         const delta = chunk.choices[0]?.delta;
         if (delta?.content) {
           const text = delta.content;

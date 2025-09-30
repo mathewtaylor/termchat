@@ -15,9 +15,15 @@ export class AnthropicProvider extends BaseProvider {
 
   async sendMessage(
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
-    onStreamChunk: (chunk: { text: string; tokenCount: number }) => void
+    onStreamChunk: (chunk: { text: string; tokenCount: number }) => void,
+    signal?: AbortSignal
   ): Promise<string> {
     try {
+      // Check if already aborted
+      if (signal?.aborted) {
+        throw new Error('Request cancelled');
+      }
+
       // Convert conversation history to Anthropic format
       const messages: Array<Anthropic.MessageParam> = conversationHistory.map(msg => ({
         role: msg.role,
@@ -35,6 +41,11 @@ export class AnthropicProvider extends BaseProvider {
 
       // Process the stream
       for await (const chunk of stream) {
+        // Check if aborted during streaming
+        if (signal?.aborted) {
+          throw new Error('Request cancelled');
+        }
+
         if (
           chunk.type === 'content_block_delta' &&
           chunk.delta.type === 'text_delta'

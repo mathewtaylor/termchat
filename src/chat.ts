@@ -33,7 +33,8 @@ export class ChatManager {
 
   async sendMessage(
     userMessage: string,
-    onStreamChunk: (text: string, tokenCount: number) => void
+    onStreamChunk: (text: string, tokenCount: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     // Add user message to history with timestamp
     const userMessageIndex = this.conversationHistory.length;
@@ -51,7 +52,8 @@ export class ChatManager {
         (chunk) => {
           tokenCount = chunk.tokenCount;
           onStreamChunk(chunk.text, chunk.tokenCount);
-        }
+        },
+        signal
       );
 
       // Add assistant response to history with metadata

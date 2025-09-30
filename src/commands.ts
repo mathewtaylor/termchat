@@ -7,6 +7,7 @@ import { ChatManager } from './chat';
 import { ConfigLoader } from './config';
 import { UIRenderer } from './ui';
 import { ProviderFactory } from './providers/factory';
+import { VERSION } from './version';
 import { writeFile, mkdir } from 'fs/promises';
 
 export interface CommandResult {
@@ -53,6 +54,7 @@ export class CommandHandler {
       { command: '/export', description: 'Export conversation to file' },
       { command: '/history', description: 'Show conversation statistics' },
       { command: '/settings', description: 'Show current configuration' },
+      { command: '/version', description: 'Show application version' },
     ];
   }
 
@@ -95,6 +97,9 @@ export class CommandHandler {
       case '/theme':
       case '/themes':
         return await this.handleTheme(args);
+
+      case '/version':
+        return this.handleVersion();
 
       default:
         return {
@@ -144,6 +149,7 @@ Available Commands:
   /export [filename]    Export conversation to conversations/ folder (auto-timestamped)
   /history              Show conversation statistics
   /settings             Show current configuration
+  /version              Show application version
 
 ──────────────────────────────────────────────────────────────────
 `;
@@ -422,11 +428,26 @@ Conversation Statistics:
       message: `
 Current Settings:
 ────────────────────────────────────────────────────────────────
+  Version:   ${VERSION}
   Provider:  ${activeProvider?.name || 'Unknown'}
   Model:     ${this.config.config.activeModel.display_name}
   Model ID:  ${this.config.config.activeModel.id}
   Theme:     ${themeName} (${activeThemeId})
 ────────────────────────────────────────────────────────────────
+`,
+    };
+  }
+
+  /**
+   * Handle /version command
+   */
+  private handleVersion(): CommandResult {
+    return {
+      success: true,
+      message: `
+TermChat v${VERSION}
+
+A multi-provider terminal chat application supporting Anthropic and OpenAI.
 `,
     };
   }

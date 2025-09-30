@@ -5,6 +5,7 @@ import { ChatManager } from './chat';
 import { UIRenderer, type MessageDisplay } from './ui';
 import { CommandHandler } from './commands';
 import { ProviderFactory } from './providers/factory';
+import { VERSION } from './version';
 import type { AppConfig } from './types';
 
 async function main() {
@@ -49,8 +50,9 @@ async function main() {
       // Intro file not found, skip silently
     }
 
-    // Show model info with robot emoji
+    // Show model info with robot emoji and version
     console.log(`🤖 ${config.config.activeModel.display_name}`);
+    console.log(`v${VERSION}`);
     console.log('');
   } catch (error) {
     if (error instanceof Error) {
@@ -85,11 +87,22 @@ async function main() {
   // Display footer
   console.log(ui.renderFooter());
 
+  // Track whether exit was explicit (command or Ctrl+C)
+  let explicitExit = false;
+
+  // Track if currently processing to ignore input
+  let isProcessing = false;
+
   // Show the prompt
   rl.prompt();
 
   rl.on('line', async (line: string) => {
     const input = line.trim();
+
+    // Ignore input if currently processing a request
+    if (isProcessing) {
+      return;
+    }
 
     if (!input) {
       rl.prompt();
@@ -114,6 +127,7 @@ async function main() {
         }
 
         if (result.shouldExit) {
+          explicitExit = true;
           rl.close();
           process.exit(0);
         }
@@ -132,27 +146,61 @@ async function main() {
       return;
     }
 
+    // Mark as processing to ignore any new input
+    isProcessing = true;
+
     // Prepare for assistant response (no need to echo user input, they just typed it)
     console.log(''); // Add spacing before AI response
     const color = ui.getAIColor();
     const reset = '\x1b[0m';
-    process.stdout.write(`${color}🤖${reset} `);
+    process.stdout.write(`${color}🤖${reset}  `);
+
+    // Hide cursor during loading
+    process.stdout.write('\x1b[?25l');
+
+    // Start loading spinner
+    const spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let spinnerIndex = 0;
+    let firstChunk = true;
+
+    const spinnerInterval = setInterval(() => {
+      process.stdout.write(`\b${spinner[spinnerIndex]}`);
+      spinnerIndex = (spinnerIndex + 1) % spinner.length;
+    }, 80);
 
     const assistantStartTime = new Date();
     let assistantContent = '';
 
     try {
       await chatManager.sendMessage(input, (chunk, tokenCount) => {
+        // On first chunk, clear spinner
+        if (firstChunk) {
+          clearInterval(spinnerInterval);
+          process.stdout.write('\b '); // Erase spinner with space
+          firstChunk = false;
+        }
+
         assistantContent += chunk;
 
         // Write chunk with color
         process.stdout.write(`${color}${chunk}${reset}`);
       });
 
-      // Done streaming - add spacing
+      // Done streaming - show cursor and allow new input
       console.log('\n\n');
+      process.stdout.write('\x1b[?25h'); // Show cursor
+      isProcessing = false;
+      rl.prompt();
 
     } catch (error) {
+      // Clear spinner if error occurs before first chunk
+      clearInterval(spinnerInterval);
+      process.stdout.write('\b \b'); // Erase spinner
+
+      // Show cursor and allow new input
+      process.stdout.write('\x1b[?25h');
+      isProcessing = false;
+
       console.log('');
       if (error instanceof Error) {
         console.log(ui.renderError(error.message));
@@ -160,19 +208,23 @@ async function main() {
         console.log(ui.renderError('An unknown error occurred'));
       }
       console.log('');
-    }
 
-    // Show prompt
-    rl.prompt();
+      // Show prompt
+      rl.prompt();
+    }
   });
 
   rl.on('close', () => {
-    console.log('\n\n👋 Goodbye!');
+    // Only print goodbye if it wasn't an explicit exit (handles Ctrl+D)
+    if (!explicitExit) {
+      console.log('\n\n👋 Goodbye!');
+    }
     process.exit(0);
   });
 
   // Handle Ctrl+C gracefully
   process.on('SIGINT', () => {
+    explicitExit = true;
     console.log('\n\n👋 Goodbye!');
     rl.close();
     process.exit(0);

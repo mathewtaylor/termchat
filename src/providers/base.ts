@@ -19,7 +19,8 @@ export abstract class BaseProvider {
    */
   abstract sendMessage(
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
-    onStreamChunk: (chunk: StreamChunk) => void
+    onStreamChunk: (chunk: StreamChunk) => void,
+    signal?: AbortSignal
   ): Promise<string>;
 
   /**
