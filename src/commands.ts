@@ -229,7 +229,9 @@ Conversation Statistics:
       p => p.id === this.config.config.activeProvider
     );
 
-    const themeName = this.config.config.theme?.name || 'No theme';
+    const activeThemeId = this.config.config.activeTheme || 'None';
+    const activeTheme = this.config.themes?.find(t => t.id === activeThemeId);
+    const themeName = activeTheme?.name || 'No theme';
 
     return {
       success: true,
@@ -239,7 +241,7 @@ Current Settings:
   Provider:  ${activeProvider?.name || 'Unknown'}
   Model:     ${this.config.config.activeModel.display_name}
   Model ID:  ${this.config.config.activeModel.id}
-  Theme:     ${themeName}
+  Theme:     ${themeName} (${activeThemeId})
 ────────────────────────────────────────────────────────────────
 `,
     };
@@ -251,7 +253,8 @@ Current Settings:
   private handleTheme(args: string[]): CommandResult {
     // If no args, show current theme and available themes
     if (args.length === 0) {
-      const currentTheme = this.config.config.theme;
+      const activeThemeId = this.config.config.activeTheme;
+      const currentTheme = this.config.themes?.find(t => t.id === activeThemeId);
       const availableThemes = this.config.themes || [];
 
       if (availableThemes.length === 0) {
@@ -267,7 +270,7 @@ No themes available in configuration.
 
       const themeList = availableThemes
         .map(t => {
-          const active = t.id === currentTheme?.id ? '* ' : '  ';
+          const active = t.id === activeThemeId ? '* ' : '  ';
           return `${active}${t.name} (${t.id}) - User: ${t.fontColours.user.name}, AI: ${t.fontColours.ai.name}`;
         })
         .join('\n');

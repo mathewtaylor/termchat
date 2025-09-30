@@ -22,20 +22,7 @@
       "id": "claude-sonnet-4-5-20250929",
       "display_name": "Claude Sonnet 4.5"
     },
-    "theme": {
-      "id": "theme-1",
-      "name": "Classic (Cyan/Green)",
-      "fontColours": {
-        "user": {
-          "name": "Cyan",
-          "value": "\u001b[36m"
-        },
-        "ai": {
-          "name": "Green",
-          "value": "\u001b[32m"
-        }
-      }
-    }
+    "activeTheme": "theme-1"
   },
   "themes": [
     {

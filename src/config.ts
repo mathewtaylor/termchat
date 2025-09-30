@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
-import type { AppConfig, Provider } from './types';
+import type { AppConfig, Provider, Theme } from './types';
 
 export class ConfigLoader {
   private configPath: string;
@@ -69,16 +69,19 @@ export class ConfigLoader {
     }
 
     // Validate theme if specified
-    if (config.config.theme) {
-      this.validateTheme(config.config.theme);
-
+    if (config.config.activeTheme) {
       // If themes array exists, verify the theme exists in it
-      if (config.themes && config.themes.length > 0) {
-        const themeExists = config.themes.some(t => t.id === config.config.theme?.id);
-        if (!themeExists) {
-          throw new Error(`Active theme "${config.config.theme.id}" not found in themes list`);
-        }
+      if (!config.themes || config.themes.length === 0) {
+        throw new Error('Config specifies activeTheme but no themes array is defined');
       }
+
+      const theme = config.themes.find(t => t.id === config.config.activeTheme);
+      if (!theme) {
+        throw new Error(`Active theme "${config.config.activeTheme}" not found in themes list`);
+      }
+
+      // Validate the theme structure
+      this.validateTheme(theme);
     }
   }
 
@@ -102,5 +105,12 @@ export class ConfigLoader {
 
   getActiveProvider(config: AppConfig): Provider | undefined {
     return config.providers.find(p => p.id === config.config.activeProvider);
+  }
+
+  getActiveTheme(config: AppConfig): Theme | undefined {
+    if (!config.config.activeTheme) {
+      return undefined;
+    }
+    return config.themes?.find(t => t.id === config.config.activeTheme);
   }
 }

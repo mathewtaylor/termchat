@@ -29,7 +29,7 @@ export interface Theme {
 export interface Config {
   activeProvider: string;
   activeModel: Model;
-  theme?: Theme;
+  activeTheme?: string;
 }
 
 export interface AppConfig {
