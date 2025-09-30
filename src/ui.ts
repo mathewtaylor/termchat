@@ -2,6 +2,8 @@
  * UI rendering components for the terminal chat application
  */
 
+import type { Theme } from './types';
+
 export interface MessageDisplay {
   role: 'user' | 'assistant';
   content: string;
@@ -12,9 +14,12 @@ export interface MessageDisplay {
 
 export class UIRenderer {
   private terminalWidth: number;
+  private theme?: Theme;
+  private readonly RESET = '\x1b[0m';
 
-  constructor() {
+  constructor(theme?: Theme) {
     this.terminalWidth = process.stdout.columns || 80;
+    this.theme = theme;
   }
 
   /**
@@ -32,24 +37,42 @@ export class UIRenderer {
   }
 
   /**
-   * Render a message (minimalist - no borders)
+   * Render a message (minimalist - no borders, with theme colors)
    */
   renderMessageBubble(message: MessageDisplay): string {
     const role = message.role === 'user' ? 'You' : 'Claude';
     const lines: string[] = [];
 
-    // Role header
-    lines.push(`${role}:`);
+    // Get color for this role
+    const color = this.getColorForRole(message.role);
 
-    // Content (preserve line breaks)
-    lines.push(message.content);
+    // Role header with color
+    lines.push(`${color}${role}:${this.RESET}`);
+
+    // Content with color (preserve line breaks)
+    lines.push(`${color}${message.content}${this.RESET}`);
 
     // Add streaming indicator if applicable
     if (message.isStreaming && message.tokenCount !== undefined) {
-      lines.push(`... (${message.tokenCount} tokens)`);
+      lines.push(`${color}... (${message.tokenCount} tokens)${this.RESET}`);
     }
 
     return lines.join('\n');
+  }
+
+  /**
+   * Get ANSI color code for a role
+   */
+  private getColorForRole(role: 'user' | 'assistant'): string {
+    if (!this.theme) {
+      return ''; // No theme, no color
+    }
+
+    if (role === 'user') {
+      return this.theme.fontColours.user.value;
+    } else {
+      return this.theme.fontColours.ai.value;
+    }
   }
 
   /**

@@ -24,7 +24,7 @@ async function main() {
     }
 
     chatManager = new ChatManager(activeProvider.apiKey, config.config.activeModel.id);
-    ui = new UIRenderer();
+    ui = new UIRenderer(config.config.theme);
     commandHandler = new CommandHandler(chatManager, config);
 
     // Initial UI render
@@ -103,28 +103,20 @@ async function main() {
       return;
     }
 
-    // Display user message
-    const userMessage: MessageDisplay = {
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-    console.log(ui.renderMessageBubble(userMessage));
-    console.log('');
-
-    // Prepare for assistant response
-    console.log('Claude:');
+    // Prepare for assistant response (no need to echo user input, they just typed it)
+    const color = config.config.theme?.fontColours.ai.value || '';
+    const reset = '\x1b[0m';
+    process.stdout.write(`${color}Claude:${reset}\n`);
 
     const assistantStartTime = new Date();
     let assistantContent = '';
-    let isFirstChunk = true;
 
     try {
       await chatManager.sendMessage(input, (chunk, tokenCount) => {
         assistantContent += chunk;
 
-        // Just write the chunk as it arrives
-        process.stdout.write(chunk);
+        // Write chunk with color
+        process.stdout.write(`${color}${chunk}${reset}`);
       });
 
       // Done streaming - add blank line

@@ -62,6 +62,10 @@ export class CommandHandler {
       case '/settings':
         return this.handleSettings();
 
+      case '/theme':
+      case '/themes':
+        return this.handleTheme(args);
+
       default:
         return {
           success: false,
@@ -105,6 +109,7 @@ Available Commands:
   /exit or /quit     Exit the application
   /clear             Clear conversation history
   /model [name]      Show current model or switch to a different model
+  /theme [theme-id]  Show current theme or list available themes
   /export [filename] Export conversation to a file (default: conversation.txt)
   /history           Show conversation statistics
   /settings          Show current configuration
@@ -224,6 +229,8 @@ Conversation Statistics:
       p => p.id === this.config.config.activeProvider
     );
 
+    const themeName = this.config.config.theme?.name || 'No theme';
+
     return {
       success: true,
       message: `
@@ -232,8 +239,57 @@ Current Settings:
   Provider:  ${activeProvider?.name || 'Unknown'}
   Model:     ${this.config.config.activeModel.display_name}
   Model ID:  ${this.config.config.activeModel.id}
+  Theme:     ${themeName}
 ────────────────────────────────────────────────────────────────
 `,
+    };
+  }
+
+  /**
+   * Handle /theme command
+   */
+  private handleTheme(args: string[]): CommandResult {
+    // If no args, show current theme and available themes
+    if (args.length === 0) {
+      const currentTheme = this.config.config.theme;
+      const availableThemes = this.config.themes || [];
+
+      if (availableThemes.length === 0) {
+        return {
+          success: true,
+          message: `
+Current Theme: ${currentTheme?.name || 'No theme configured'}
+
+No themes available in configuration.
+`,
+        };
+      }
+
+      const themeList = availableThemes
+        .map(t => {
+          const active = t.id === currentTheme?.id ? '* ' : '  ';
+          return `${active}${t.name} (${t.id}) - User: ${t.fontColours.user.name}, AI: ${t.fontColours.ai.name}`;
+        })
+        .join('\n');
+
+      return {
+        success: true,
+        message: `
+Current Theme: ${currentTheme?.name || 'No theme'}
+
+Available Themes:
+${themeList}
+
+To switch themes, use: /theme <theme-id>
+Note: Theme switching requires config.json update and app restart.
+`,
+      };
+    }
+
+    // Theme switching would require config file update
+    return {
+      success: false,
+      message: 'Theme switching is not yet implemented. Please update config.json manually and restart the app.',
     };
   }
 

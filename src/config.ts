@@ -67,6 +67,37 @@ export class ConfigLoader {
         `Active model "${config.config.activeModel.id}" not found in provider "${activeProvider.id}"`
       );
     }
+
+    // Validate theme if specified
+    if (config.config.theme) {
+      this.validateTheme(config.config.theme);
+
+      // If themes array exists, verify the theme exists in it
+      if (config.themes && config.themes.length > 0) {
+        const themeExists = config.themes.some(t => t.id === config.config.theme?.id);
+        if (!themeExists) {
+          throw new Error(`Active theme "${config.config.theme.id}" not found in themes list`);
+        }
+      }
+    }
+  }
+
+  private validateTheme(theme: any): void {
+    if (!theme.id || !theme.name || !theme.fontColours) {
+      throw new Error('Theme must have id, name, and fontColours');
+    }
+
+    if (!theme.fontColours.user || !theme.fontColours.ai) {
+      throw new Error('Theme fontColours must have user and ai properties');
+    }
+
+    if (!theme.fontColours.user.name || !theme.fontColours.user.value) {
+      throw new Error('Theme user color must have name and value');
+    }
+
+    if (!theme.fontColours.ai.name || !theme.fontColours.ai.value) {
+      throw new Error('Theme AI color must have name and value');
+    }
   }
 
   getActiveProvider(config: AppConfig): Provider | undefined {
