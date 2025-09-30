@@ -13,7 +13,30 @@
           "display_name": "Claude Opus 4.1"
         }
       ],
-      "apiKey": "your-api-key-here"
+      "apiKey": "anthropic-api-key"
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "models": [
+        {
+          "id": "gpt-5-2025-08-07",
+          "display_name": "GPT-5"
+        },
+        {
+          "id": "gpt-5-mini-2025-08-07",
+          "display_name": "GPT-5 Mini"
+        },
+        {
+          "id": "gpt-5-nano-2025-08-07",
+          "display_name": "GPT-5 Nano"
+        },
+        {
+          "id": "gpt-5-codex",
+          "display_name": "GPT-5 Codex"
+        }
+      ],
+      "apiKey": "openai-api-key"
     }
   ],
   "config": {
