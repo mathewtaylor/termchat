@@ -1,4 +1,5 @@
 import * as readline from 'readline';
+import { readFile } from 'fs/promises';
 import { ConfigLoader } from './config';
 import { ChatManager } from './chat';
 import { UIRenderer, type MessageDisplay } from './ui';
@@ -28,7 +29,18 @@ async function main() {
 
     // Initial UI render
     ui.clearScreen();
-    console.log(ui.renderHeader(config.config.activeModel.display_name, activeProvider.name));
+
+    // Try to display intro ASCII art if available
+    try {
+      const introText = await readFile('./intro.txt', 'utf-8');
+      console.log(introText);
+      console.log('');
+    } catch {
+      // Intro file not found, skip silently
+    }
+
+    // Show model info
+    console.log(`Using: ${config.config.activeModel.display_name}`);
     console.log('');
   } catch (error) {
     if (error instanceof Error) {
