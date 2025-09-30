@@ -6,7 +6,7 @@ import type { AppConfig } from './types';
 import { ChatManager } from './chat';
 import { ConfigLoader } from './config';
 import { UIRenderer } from './ui';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 
 export interface CommandResult {
   success: boolean;
@@ -116,8 +116,8 @@ Available Commands:
   /exit or /quit     Exit the application
   /clear             Clear conversation history
   /model [name]      Show current model or switch to a different model
-  /theme [theme-id]  Show current theme or list available themes
-  /export [filename] Export conversation to a file (default: conversation.txt)
+  /theme [theme-id]  Show current theme or switch themes instantly
+  /export [filename] Export conversation to conversations/ folder (auto-timestamped)
   /history           Show conversation statistics
   /settings          Show current configuration
 
@@ -178,7 +178,6 @@ Note: Model switching requires app restart to take effect.
    * Handle /export command
    */
   private async handleExport(args: string[]): Promise<CommandResult> {
-    const filename = args[0] || 'conversation.txt';
     const history = this.chatManager.getHistory();
 
     if (history.length === 0) {
@@ -189,6 +188,27 @@ Note: Model switching requires app restart to take effect.
     }
 
     try {
+      // Create conversations directory if it doesn't exist
+      const conversationsDir = './conversations';
+      await mkdir(conversationsDir, { recursive: true });
+
+      // Generate timestamp-based filename if not provided
+      let filename: string;
+      if (args[0]) {
+        // User provided custom filename, save in conversations folder
+        filename = `${conversationsDir}/${args[0]}`;
+      } else {
+        // Generate default timestamp-based filename
+        const now = new Date();
+        const timestamp = now.getFullYear().toString() +
+          (now.getMonth() + 1).toString().padStart(2, '0') +
+          now.getDate().toString().padStart(2, '0') +
+          now.getHours().toString().padStart(2, '0') +
+          now.getMinutes().toString().padStart(2, '0') +
+          now.getSeconds().toString().padStart(2, '0');
+        filename = `${conversationsDir}/conversation-${timestamp}.txt`;
+      }
+
       const content = this.formatHistoryForExport(history);
       await writeFile(filename, content, 'utf-8');
 
