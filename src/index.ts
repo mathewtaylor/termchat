@@ -53,13 +53,25 @@ async function main() {
     process.exit(1);
   }
 
-  // Set up readline interface with colored prompt
+  // Set up readline interface with colored prompt and autocomplete
   const userColor = ui.getUserColor();
   const reset = '\x1b[0m';
+
+  // Completer function for command autocomplete
+  const completer = (line: string): [string[], string] => {
+    const commands = commandHandler.getAvailableCommands();
+    const completions = commands.map(c => c.command);
+    const hits = completions.filter(c => c.startsWith(line));
+
+    // Show all commands if the line is empty or just "/"
+    return [hits.length > 0 ? hits : (line === '/' || line === '' ? completions : []), line];
+  };
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: `${userColor}💬 ${reset}`,
+    completer: completer,
   });
 
   // Display footer

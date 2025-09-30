@@ -38,6 +38,23 @@ export class CommandHandler {
   }
 
   /**
+   * Get list of available commands for autocomplete
+   */
+  getAvailableCommands(): Array<{ command: string; description: string }> {
+    return [
+      { command: '/help', description: 'Show this help message' },
+      { command: '/exit', description: 'Exit the application' },
+      { command: '/quit', description: 'Exit the application' },
+      { command: '/clear', description: 'Clear conversation history' },
+      { command: '/model', description: 'Show current model or switch models' },
+      { command: '/theme', description: 'Show current theme or switch themes' },
+      { command: '/export', description: 'Export conversation to file' },
+      { command: '/history', description: 'Show conversation statistics' },
+      { command: '/settings', description: 'Show current configuration' },
+    ];
+  }
+
+  /**
    * Execute a command
    */
   async execute(input: string): Promise<CommandResult> {
