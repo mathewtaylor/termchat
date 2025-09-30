@@ -4,6 +4,7 @@ import { ConfigLoader } from './config';
 import { ChatManager } from './chat';
 import { UIRenderer, type MessageDisplay } from './ui';
 import { CommandHandler } from './commands';
+import { ProviderFactory } from './providers/factory';
 import type { AppConfig } from './types';
 
 async function main() {
@@ -25,7 +26,14 @@ async function main() {
 
     const activeTheme = configLoader.getActiveTheme(config);
 
-    chatManager = new ChatManager(activeProvider.apiKey, config.config.activeModel.id);
+    // Create provider using factory
+    const provider = ProviderFactory.createProvider(
+      activeProvider.id,
+      activeProvider.apiKey,
+      config.config.activeModel.id
+    );
+
+    chatManager = new ChatManager(provider);
     ui = new UIRenderer(activeTheme);
     commandHandler = new CommandHandler(chatManager, config, configLoader, ui);
 

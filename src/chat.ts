@@ -1,29 +1,34 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { Message, MessageWithMetadata } from './types';
+import type { BaseProvider } from './providers/base';
 
 export class ChatManager {
-  private client: Anthropic;
-  private modelId: string;
-  private conversationHistory: Array<Anthropic.MessageParam> = [];
+  private provider: BaseProvider;
+  private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
   private messageMetadata: Map<number, { timestamp: Date; tokenCount?: number }> = new Map();
 
-  constructor(apiKey: string, modelId: string) {
-    this.client = new Anthropic({ apiKey });
-    this.modelId = modelId;
+  constructor(provider: BaseProvider) {
+    this.provider = provider;
+  }
+
+  /**
+   * Replace the provider (for hot-swapping between providers)
+   */
+  setProvider(provider: BaseProvider): void {
+    this.provider = provider;
   }
 
   /**
    * Update the model ID for future conversations
    */
   setModel(modelId: string): void {
-    this.modelId = modelId;
+    this.provider.setModel(modelId);
   }
 
   /**
    * Get the current model ID
    */
   getModelId(): string {
-    return this.modelId;
+    return this.provider.getModelId();
   }
 
   async sendMessage(
@@ -39,28 +44,15 @@ export class ChatManager {
     this.messageMetadata.set(userMessageIndex, { timestamp: new Date() });
 
     try {
-      // Create streaming request
-      const stream = await this.client.messages.stream({
-        model: this.modelId,
-        max_tokens: 8192,
-        messages: this.conversationHistory,
-      });
-
-      let fullResponse = '';
+      // Send message through provider and get streaming response
       let tokenCount = 0;
-
-      // Process the stream
-      for await (const chunk of stream) {
-        if (
-          chunk.type === 'content_block_delta' &&
-          chunk.delta.type === 'text_delta'
-        ) {
-          const text = chunk.delta.text;
-          fullResponse += text;
-          tokenCount = this.estimateTokens(fullResponse);
-          onStreamChunk(text, tokenCount);
+      const fullResponse = await this.provider.sendMessage(
+        this.conversationHistory,
+        (chunk) => {
+          tokenCount = chunk.tokenCount;
+          onStreamChunk(chunk.text, chunk.tokenCount);
         }
-      }
+      );
 
       // Add assistant response to history with metadata
       const assistantMessageIndex = this.conversationHistory.length;
@@ -77,10 +69,6 @@ export class ChatManager {
       this.conversationHistory.pop();
       this.messageMetadata.delete(userMessageIndex);
 
-      if (error instanceof Anthropic.APIError) {
-        throw new Error(`API Error: ${error.message}`);
-      }
-
       if (error instanceof Error) {
         throw new Error(`Error: ${error.message}`);
       }
@@ -92,12 +80,9 @@ export class ChatManager {
   getHistory(): Message[] {
     return this.conversationHistory.map((msg, index) => {
       const metadata = this.messageMetadata.get(index);
-      const content = typeof msg.content === 'string'
-        ? msg.content
-        : (msg.content[0] && 'text' in msg.content[0] ? msg.content[0].text : '');
       return {
-        role: msg.role as 'user' | 'assistant',
-        content,
+        role: msg.role,
+        content: msg.content,
         timestamp: metadata?.timestamp,
       };
     });
@@ -106,12 +91,9 @@ export class ChatManager {
   getHistoryWithMetadata(): MessageWithMetadata[] {
     return this.conversationHistory.map((msg, index) => {
       const metadata = this.messageMetadata.get(index) || { timestamp: new Date() };
-      const content = typeof msg.content === 'string'
-        ? msg.content
-        : (msg.content[0] && 'text' in msg.content[0] ? msg.content[0].text : '');
       return {
-        role: msg.role as 'user' | 'assistant',
-        content,
+        role: msg.role,
+        content: msg.content,
         timestamp: metadata.timestamp,
         tokenCount: metadata.tokenCount,
       };
@@ -130,18 +112,9 @@ export class ChatManager {
   getTokenEstimate(): number {
     let total = 0;
     for (const msg of this.conversationHistory) {
-      const content = typeof msg.content === 'string'
-        ? msg.content
-        : (msg.content[0] && 'text' in msg.content[0] ? msg.content[0].text : '');
-      total += this.estimateTokens(content);
+      // Rough token estimation (4 chars ≈ 1 token)
+      total += Math.ceil(msg.content.length / 4);
     }
     return total;
-  }
-
-  /**
-   * Rough token estimation (4 chars ≈ 1 token)
-   */
-  private estimateTokens(text: string): number {
-    return Math.ceil(text.length / 4);
   }
 }

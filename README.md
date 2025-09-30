@@ -1,69 +1,55 @@
-# Terminal Chat
+# TermChat
 
-A simple terminal-based chat application for interacting with Claude AI models using the Anthropic API.
+**Chat with AI directly from your terminal.**
 
-## Features
+TermChat is a lightweight, terminal-based chat interface for AI models. It's built for developers and power users who live in their terminal and want instant access to LLM assistance without context switching.
 
-- 💬 Interactive terminal chat interface
-- 🔄 Streaming responses in real-time
-- 📝 Conversation context maintained throughout session
-- ⚙️ Configurable model selection
-- 🔐 Secure API key management
+Supports multiple AI providers including **Anthropic** (Claude) and **OpenAI** (GPT).
 
-## Setup
+## Why TermChat?
 
-1. Install dependencies:
+- **Stay in your workflow** - No need to switch to a browser or separate app
+- **Lightning fast** - Launch and start chatting in seconds
+- **Terminal native** - Feels like a natural part of your command-line toolkit
+- **Streaming responses** - See answers appear in real-time
+- **Conversation context** - Full chat history maintained throughout your session
+- **Highly configurable** - Multiple models, custom themes, and instant switching
+
+## Quick Start
+
 ```bash
+# Install dependencies
 bun install
-```
 
-2. Create your config file:
-```bash
+# Set up your config
 cp config.example.json config.json
-```
+# Edit config.json and add your API key(s) for Anthropic and/or OpenAI
 
-3. Edit `config.json` and add your Anthropic API key:
-```json
-{
-  "providers": [
-    {
-      "id": "anthropic",
-      "name": "Anthropic",
-      "models": [...],
-      "apiKey": "your-actual-api-key-here"
-    }
-  ],
-  ...
-}
-```
-
-## Usage
-
-Start the chat application:
-```bash
+# Start chatting
 bun start
 ```
 
-Or run directly:
-```bash
-bun run src/index.ts
-```
+For detailed setup, configuration, and usage instructions, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
-### Commands
+## Features
 
-- Type your message and press Enter to chat
-- Type `/exit` to quit the application
+- 💬 Interactive streaming chat with AI models
+- 🔄 Multiple AI providers (Anthropic & OpenAI) - switch instantly with `/provider`
+- 🤖 Multiple models per provider - switch anytime with `/model`
+- 🎨 5 color themes - switch anytime with `/theme`
+- 📝 Export conversations to timestamped files
+- ⚡ Hot-swapping - no restart needed for provider/model/theme changes
+- 📊 Conversation statistics and token estimates
 
-## Configuration
+Type `/help` in the app to see all available commands.
 
-The `config.json` file supports:
-- Multiple providers (currently Anthropic)
-- Multiple models per provider
-- Active provider and model selection
+## Requirements
 
-See `config.example.json` for the full configuration structure.
+- [Bun](https://bun.sh) runtime
+- API key for at least one provider:
+  - [Anthropic API key](https://console.anthropic.com/) (for Claude models)
+  - [OpenAI API key](https://platform.openai.com/) (for GPT models)
 
-## Built with
+## License
 
-- [Bun](https://bun.sh) - Fast JavaScript runtime
-- [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-typescript) - Official TypeScript SDK
+MIT

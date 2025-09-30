@@ -6,6 +6,7 @@ import type { AppConfig } from './types';
 import { ChatManager } from './chat';
 import { ConfigLoader } from './config';
 import { UIRenderer } from './ui';
+import { ProviderFactory } from './providers/factory';
 import { writeFile, mkdir } from 'fs/promises';
 
 export interface CommandResult {
@@ -46,6 +47,7 @@ export class CommandHandler {
       { command: '/exit', description: 'Exit the application' },
       { command: '/quit', description: 'Exit the application' },
       { command: '/clear', description: 'Clear conversation history' },
+      { command: '/provider', description: 'Show current provider or switch providers' },
       { command: '/model', description: 'Show current model or switch models' },
       { command: '/theme', description: 'Show current theme or switch themes' },
       { command: '/export', description: 'Export conversation to file' },
@@ -72,6 +74,10 @@ export class CommandHandler {
 
       case '/help':
         return this.handleHelp();
+
+      case '/provider':
+      case '/providers':
+        return await this.handleProvider(args);
 
       case '/model':
       case '/models':
@@ -129,14 +135,15 @@ export class CommandHandler {
 Available Commands:
 ──────────────────────────────────────────────────────────────────
 
-  /help              Show this help message
-  /exit or /quit     Exit the application
-  /clear             Clear conversation history
-  /model [model-id]  Show current model or switch models instantly
-  /theme [theme-id]  Show current theme or switch themes instantly
-  /export [filename] Export conversation to conversations/ folder (auto-timestamped)
-  /history           Show conversation statistics
-  /settings          Show current configuration
+  /help                 Show this help message
+  /exit or /quit        Exit the application
+  /clear                Clear conversation history
+  /provider [provider]  Show current provider or switch providers instantly
+  /model [model-id]     Show current model or switch models instantly
+  /theme [theme-id]     Show current theme or switch themes instantly
+  /export [filename]    Export conversation to conversations/ folder (auto-timestamped)
+  /history              Show conversation statistics
+  /settings             Show current configuration
 
 ──────────────────────────────────────────────────────────────────
 `;
@@ -145,6 +152,102 @@ Available Commands:
       success: true,
       message: helpText,
     };
+  }
+
+  /**
+   * Handle /provider command
+   */
+  private async handleProvider(args: string[]): Promise<CommandResult> {
+    const currentProviderId = this.config.config.activeProvider;
+    const currentProvider = this.config.providers.find(p => p.id === currentProviderId);
+
+    // If no args, show current provider and available providers
+    if (args.length === 0) {
+      const providerList = this.config.providers
+        .map(p => {
+          const active = p.id === currentProviderId ? '* ' : '  ';
+          const modelCount = p.models.length;
+          return `${active}${p.name} (${p.id}) - ${modelCount} model${modelCount !== 1 ? 's' : ''}`;
+        })
+        .join('\n');
+
+      return {
+        success: true,
+        message: `
+Current Provider:
+  ${currentProvider?.name || 'Unknown'} (${currentProviderId})
+
+Available Providers:
+${providerList}
+
+To switch providers, use: /provider <provider-id>
+`,
+      };
+    }
+
+    // Provider switching implementation
+    const providerId = args[0];
+
+    // Validate provider exists
+    const newProvider = this.config.providers.find(p => p.id === providerId);
+    if (!newProvider) {
+      return {
+        success: false,
+        message: `Provider "${providerId}" not found. Use /provider to see available providers.`,
+      };
+    }
+
+    // Check if provider has an API key
+    if (!newProvider.apiKey) {
+      return {
+        success: false,
+        message: `Provider "${newProvider.name}" is missing an API key in config.json`,
+      };
+    }
+
+    // Check if provider has models
+    if (!newProvider.models || newProvider.models.length === 0) {
+      return {
+        success: false,
+        message: `Provider "${newProvider.name}" has no models configured.`,
+      };
+    }
+
+    try {
+      // Update config in memory - switch to first model of new provider
+      const firstModel = newProvider.models[0];
+      this.config.config.activeProvider = newProvider.id;
+      this.config.config.activeModel = {
+        id: firstModel.id,
+        display_name: firstModel.display_name,
+      };
+
+      // Save to file
+      await this.configLoader.save(this.config);
+
+      // Create new provider instance and hot-swap it
+      const provider = ProviderFactory.createProvider(
+        newProvider.id,
+        newProvider.apiKey,
+        firstModel.id
+      );
+      this.chatManager.setProvider(provider);
+
+      // Clear conversation history (different providers have different contexts)
+      this.chatManager.clearHistory();
+
+      return {
+        success: true,
+        message: `✓ Switched to ${newProvider.name} (${firstModel.display_name})
+  Conversation history has been cleared.`,
+        shouldClearScreen: true,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to switch provider: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 
   /**
@@ -175,13 +278,14 @@ Available Commands:
       return {
         success: true,
         message: `
-Current Model:
-  ${currentModel.display_name} (${currentModel.id})
+Current Provider: ${activeProvider.name}
+Current Model: ${currentModel.display_name} (${currentModel.id})
 
-Available Models:
+Available Models (${activeProvider.name}):
 ${availableModels}
 
 To switch models, use: /model <model-id>
+To switch providers, use: /provider <provider-id>
 `,
       };
     }
