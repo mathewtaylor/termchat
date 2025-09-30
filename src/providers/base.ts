@@ -2,9 +2,20 @@
  * Base provider interface for LLM providers
  */
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
 export interface StreamChunk {
   text: string;
   tokenCount: number;
+}
+
+export interface MessageResponse {
+  response: string;
+  usage: TokenUsage;
 }
 
 export abstract class BaseProvider {
@@ -21,7 +32,7 @@ export abstract class BaseProvider {
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
     onStreamChunk: (chunk: StreamChunk) => void,
     signal?: AbortSignal
-  ): Promise<string>;
+  ): Promise<MessageResponse>;
 
   /**
    * Get the current model ID

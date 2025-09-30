@@ -5,6 +5,8 @@ import { ChatManager } from './chat';
 import { UIRenderer, type MessageDisplay } from './ui';
 import { CommandHandler } from './commands';
 import { ProviderFactory } from './providers/factory';
+import { SetupManager } from './setup';
+import { TextWrapper } from './text-wrapper';
 import { VERSION } from './version';
 import type { AppConfig } from './types';
 
@@ -18,6 +20,19 @@ async function main() {
   try {
     const configLoader = new ConfigLoader();
     config = await configLoader.load();
+
+    // Check if first-time setup is needed
+    if (configLoader.needsSetup(config)) {
+      const setupManager = new SetupManager(config, configLoader);
+      const setupSuccess = await setupManager.runFirstTimeSetup();
+
+      if (!setupSuccess) {
+        process.exit(1);
+      }
+
+      // Reload config after setup
+      config = await configLoader.load();
+    }
 
     const activeProvider = configLoader.getActiveProvider(config);
     if (!activeProvider) {
@@ -149,10 +164,25 @@ async function main() {
     // Mark as processing to ignore any new input
     isProcessing = true;
 
-    // Prepare for assistant response (no need to echo user input, they just typed it)
-    console.log(''); // Add spacing before AI response
-    const color = ui.getAIColor();
+    // Display user's message with word wrapping
+    console.log('');
+    const userColor = ui.getUserColor();
     const reset = '\x1b[0m';
+
+    // Wrap and display user input
+    const userWrapper = new TextWrapper(process.stdout.columns || 80, 0);
+    const wrappedUserInput = userWrapper.wrapChunk(input);
+    const userLines = wrappedUserInput.split('\n');
+
+    // Display user message with color
+    console.log(`${userColor}💬 You:${reset}`);
+    for (const line of userLines) {
+      console.log(`${userColor}${line}${reset}`);
+    }
+    console.log(''); // Spacing before AI response
+
+    // Prepare for assistant response
+    const color = ui.getAIColor();
     process.stdout.write(`${color}🤖${reset}  `);
 
     // Hide cursor during loading
@@ -171,6 +201,10 @@ async function main() {
     const assistantStartTime = new Date();
     let assistantContent = '';
 
+    // Create text wrapper for word-boundary wrapping
+    // Account for the emoji and spaces at start of line (🤖 + 2 spaces = ~5 chars)
+    const textWrapper = new TextWrapper(process.stdout.columns || 80, 5);
+
     try {
       await chatManager.sendMessage(input, (chunk, tokenCount) => {
         // On first chunk, clear spinner
@@ -182,8 +216,15 @@ async function main() {
 
         assistantContent += chunk;
 
-        // Write chunk with color
-        process.stdout.write(`${color}${chunk}${reset}`);
+        // Wrap chunk at word boundaries
+        const wrappedChunk = textWrapper.wrapChunk(chunk);
+
+        // Apply color to each line
+        const lines = wrappedChunk.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          if (i > 0) process.stdout.write('\n'); // Add newline between lines
+          process.stdout.write(`${color}${lines[i]}${reset}`);
+        }
       });
 
       // Done streaming - show cursor and allow new input

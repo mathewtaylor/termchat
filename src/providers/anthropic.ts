@@ -3,7 +3,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { BaseProvider } from './base';
+import { BaseProvider, type MessageResponse } from './base';
 
 export class AnthropicProvider extends BaseProvider {
   private client: Anthropic;
@@ -17,7 +17,7 @@ export class AnthropicProvider extends BaseProvider {
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
     onStreamChunk: (chunk: { text: string; tokenCount: number }) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): Promise<MessageResponse> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
@@ -57,7 +57,17 @@ export class AnthropicProvider extends BaseProvider {
         }
       }
 
-      return fullResponse;
+      // Get the final message with usage data
+      const finalMessage = await stream.finalMessage();
+
+      return {
+        response: fullResponse,
+        usage: {
+          inputTokens: finalMessage.usage.input_tokens,
+          outputTokens: finalMessage.usage.output_tokens,
+          totalTokens: finalMessage.usage.input_tokens + finalMessage.usage.output_tokens,
+        },
+      };
     } catch (error) {
       if (error instanceof Anthropic.APIError) {
         throw new Error(`Anthropic API Error: ${error.message}`);

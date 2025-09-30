@@ -1,10 +1,15 @@
-import type { Message, MessageWithMetadata } from './types';
+import type { Message, MessageWithMetadata, ModelPricing } from './types';
 import type { BaseProvider } from './providers/base';
 
 export class ChatManager {
   private provider: BaseProvider;
   private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
-  private messageMetadata: Map<number, { timestamp: Date; tokenCount?: number }> = new Map();
+  private messageMetadata: Map<number, {
+    timestamp: Date;
+    tokenCount?: number;
+    inputTokens?: number;
+    outputTokens?: number;
+  }> = new Map();
 
   constructor(provider: BaseProvider) {
     this.provider = provider;
@@ -47,7 +52,7 @@ export class ChatManager {
     try {
       // Send message through provider and get streaming response
       let tokenCount = 0;
-      const fullResponse = await this.provider.sendMessage(
+      const result = await this.provider.sendMessage(
         this.conversationHistory,
         (chunk) => {
           tokenCount = chunk.tokenCount;
@@ -60,11 +65,13 @@ export class ChatManager {
       const assistantMessageIndex = this.conversationHistory.length;
       this.conversationHistory.push({
         role: 'assistant',
-        content: fullResponse,
+        content: result.response,
       });
       this.messageMetadata.set(assistantMessageIndex, {
         timestamp: new Date(),
         tokenCount: tokenCount,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
       });
     } catch (error) {
       // Remove the user message from history since the request failed
@@ -98,6 +105,8 @@ export class ChatManager {
         content: msg.content,
         timestamp: metadata.timestamp,
         tokenCount: metadata.tokenCount,
+        inputTokens: metadata.inputTokens,
+        outputTokens: metadata.outputTokens,
       };
     });
   }
@@ -118,5 +127,88 @@ export class ChatManager {
       total += Math.ceil(msg.content.length / 4);
     }
     return total;
+  }
+
+  /**
+   * Get total input tokens across all messages
+   */
+  getTotalInputTokens(): number {
+    let total = 0;
+    for (const metadata of this.messageMetadata.values()) {
+      if (metadata.inputTokens) {
+        total += metadata.inputTokens;
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Get total output tokens across all messages
+   */
+  getTotalOutputTokens(): number {
+    let total = 0;
+    for (const metadata of this.messageMetadata.values()) {
+      if (metadata.outputTokens) {
+        total += metadata.outputTokens;
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Calculate session cost based on model pricing
+   */
+  getSessionCost(pricing?: ModelPricing): number | null {
+    if (!pricing) {
+      return null;
+    }
+
+    const inputTokens = this.getTotalInputTokens();
+    const outputTokens = this.getTotalOutputTokens();
+
+    const inputCost = (inputTokens / 1_000_000) * pricing.inputTokensPer1M;
+    const outputCost = (outputTokens / 1_000_000) * pricing.outputTokensPer1M;
+
+    return inputCost + outputCost;
+  }
+
+  /**
+   * Get detailed cost breakdown
+   */
+  getCostBreakdown(pricing?: ModelPricing): {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    inputCost: number | null;
+    outputCost: number | null;
+    totalCost: number | null;
+  } {
+    const inputTokens = this.getTotalInputTokens();
+    const outputTokens = this.getTotalOutputTokens();
+    const totalTokens = inputTokens + outputTokens;
+
+    if (!pricing) {
+      return {
+        inputTokens,
+        outputTokens,
+        totalTokens,
+        inputCost: null,
+        outputCost: null,
+        totalCost: null,
+      };
+    }
+
+    const inputCost = (inputTokens / 1_000_000) * pricing.inputTokensPer1M;
+    const outputCost = (outputTokens / 1_000_000) * pricing.outputTokensPer1M;
+    const totalCost = inputCost + outputCost;
+
+    return {
+      inputTokens,
+      outputTokens,
+      totalTokens,
+      inputCost,
+      outputCost,
+      totalCost,
+    };
   }
 }

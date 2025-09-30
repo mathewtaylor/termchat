@@ -1,0 +1,136 @@
+{
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "models": [
+        {
+          "id": "claude-sonnet-4-5-20250929",
+          "display_name": "Claude Sonnet 4.5",
+          "pricing": {
+            "inputTokensPer1M": 3.0,
+            "outputTokensPer1M": 15.0
+          }
+        },
+        {
+          "id": "claude-opus-4-1-20250805",
+          "display_name": "Claude Opus 4.1",
+          "pricing": {
+            "inputTokensPer1M": 15.0,
+            "outputTokensPer1M": 75.0
+          }
+        }
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "models": [
+        {
+          "id": "gpt-5-2025-08-07",
+          "display_name": "GPT-5",
+          "pricing": {
+            "inputTokensPer1M": 1.25,
+            "outputTokensPer1M": 10.0
+          }
+        },
+        {
+          "id": "gpt-5-mini-2025-08-07",
+          "display_name": "GPT-5 Mini",
+          "pricing": {
+            "inputTokensPer1M": 0.25,
+            "outputTokensPer1M": 2.0
+          }
+        },
+        {
+          "id": "gpt-5-nano-2025-08-07",
+          "display_name": "GPT-5 Nano",
+          "pricing": {
+            "inputTokensPer1M": 0.10,
+            "outputTokensPer1M": 0.80
+          }
+        },
+        {
+          "id": "gpt-5-codex",
+          "display_name": "GPT-5 Codex",
+          "pricing": {
+            "inputTokensPer1M": 1.25,
+            "outputTokensPer1M": 10.0
+          }
+        }
+      ]
+    }
+  ],
+  "themes": [
+    {
+      "id": "theme-1",
+      "name": "Classic (Cyan/Green)",
+      "fontColours": {
+        "user": {
+          "name": "Cyan",
+          "value": "\u001b[36m"
+        },
+        "ai": {
+          "name": "Green",
+          "value": "\u001b[32m"
+        }
+      }
+    },
+    {
+      "id": "theme-2",
+      "name": "High Contrast (Bright Blue/Yellow)",
+      "fontColours": {
+        "user": {
+          "name": "Bright Blue",
+          "value": "\u001b[94m"
+        },
+        "ai": {
+          "name": "Yellow",
+          "value": "\u001b[33m"
+        }
+      }
+    },
+    {
+      "id": "theme-3",
+      "name": "Modern (Magenta/Cyan)",
+      "fontColours": {
+        "user": {
+          "name": "Magenta",
+          "value": "\u001b[35m"
+        },
+        "ai": {
+          "name": "Cyan",
+          "value": "\u001b[36m"
+        }
+      }
+    },
+    {
+      "id": "theme-4",
+      "name": "Traditional (Bright White/Bright Green)",
+      "fontColours": {
+        "user": {
+          "name": "Bright White",
+          "value": "\u001b[97m"
+        },
+        "ai": {
+          "name": "Bright Green",
+          "value": "\u001b[92m"
+        }
+      }
+    },
+    {
+      "id": "theme-5",
+      "name": "Soft (Bright Cyan/Bright Magenta)",
+      "fontColours": {
+        "user": {
+          "name": "Bright Cyan",
+          "value": "\u001b[96m"
+        },
+        "ai": {
+          "name": "Bright Magenta",
+          "value": "\u001b[95m"
+        }
+      }
+    }
+  ]
+}

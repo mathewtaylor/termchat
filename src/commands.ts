@@ -7,6 +7,7 @@ import { ChatManager } from './chat';
 import { ConfigLoader } from './config';
 import { UIRenderer } from './ui';
 import { ProviderFactory } from './providers/factory';
+import { SetupManager } from './setup';
 import { VERSION } from './version';
 import { writeFile, mkdir } from 'fs/promises';
 
@@ -48,11 +49,14 @@ export class CommandHandler {
       { command: '/exit', description: 'Exit the application' },
       { command: '/quit', description: 'Exit the application' },
       { command: '/clear', description: 'Clear conversation history' },
+      { command: '/setup', description: 'Run first-time setup wizard' },
+      { command: '/configure', description: 'Configure provider API keys' },
       { command: '/provider', description: 'Show current provider or switch providers' },
       { command: '/model', description: 'Show current model or switch models' },
       { command: '/theme', description: 'Show current theme or switch themes' },
       { command: '/export', description: 'Export conversation to file' },
       { command: '/history', description: 'Show conversation statistics' },
+      { command: '/cost', description: 'Show token usage and cost breakdown' },
       { command: '/settings', description: 'Show current configuration' },
       { command: '/version', description: 'Show application version' },
     ];
@@ -77,6 +81,12 @@ export class CommandHandler {
       case '/help':
         return this.handleHelp();
 
+      case '/setup':
+        return await this.handleSetup();
+
+      case '/configure':
+        return await this.handleConfigure(args);
+
       case '/provider':
       case '/providers':
         return await this.handleProvider(args);
@@ -90,6 +100,9 @@ export class CommandHandler {
 
       case '/history':
         return this.handleHistory();
+
+      case '/cost':
+        return this.handleCost();
 
       case '/settings':
         return this.handleSettings();
@@ -143,11 +156,14 @@ Available Commands:
   /help                 Show this help message
   /exit or /quit        Exit the application
   /clear                Clear conversation history
+  /setup                Run first-time setup wizard
+  /configure [provider] Configure provider API keys interactively
   /provider [provider]  Show current provider or switch providers instantly
   /model [model-id]     Show current model or switch models instantly
   /theme [theme-id]     Show current theme or switch themes instantly
   /export [filename]    Export conversation to conversations/ folder (auto-timestamped)
   /history              Show conversation statistics
+  /cost                 Show token usage and cost breakdown
   /settings             Show current configuration
   /version              Show application version
 
@@ -158,6 +174,76 @@ Available Commands:
       success: true,
       message: helpText,
     };
+  }
+
+  /**
+   * Handle /setup command
+   */
+  private async handleSetup(): Promise<CommandResult> {
+    const setupManager = new SetupManager(this.config, this.configLoader);
+
+    try {
+      const success = await setupManager.runFirstTimeSetup();
+
+      if (success) {
+        // Reload config after setup
+        const updatedConfig = await this.configLoader.load();
+        Object.assign(this.config, updatedConfig);
+
+        return {
+          success: true,
+          message: '✓ Setup completed successfully',
+          shouldClearScreen: true,
+        };
+      } else {
+        return {
+          success: false,
+          message: '⚠️  Setup was not completed',
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error running setup: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
+  }
+
+  /**
+   * Handle /configure command
+   */
+  private async handleConfigure(args: string[]): Promise<CommandResult> {
+    const setupManager = new SetupManager(this.config, this.configLoader);
+
+    // If no args, show all providers and their status
+    if (args.length === 0) {
+      return {
+        success: true,
+        message: setupManager.getProvidersStatus(),
+      };
+    }
+
+    // Configure specific provider
+    const providerId = args[0];
+    if (!providerId) {
+      return {
+        success: false,
+        message: 'Provider ID required. Use /configure <provider-id>',
+      };
+    }
+
+    try {
+      const result = await setupManager.configureProvider(providerId);
+      return {
+        success: true,
+        message: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Error configuring provider: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      };
+    }
   }
 
   /**
@@ -207,7 +293,7 @@ To switch providers, use: /provider <provider-id>
     if (!newProvider.apiKey) {
       return {
         success: false,
-        message: `Provider "${newProvider.name}" is missing an API key in config.json`,
+        message: `Provider "${newProvider.name}" is missing an API key. Use /configure ${newProvider.id} to add one.`,
       };
     }
 
@@ -222,6 +308,13 @@ To switch providers, use: /provider <provider-id>
     try {
       // Update config in memory - switch to first model of new provider
       const firstModel = newProvider.models[0];
+      if (!firstModel) {
+        return {
+          success: false,
+          message: `Provider "${newProvider.name}" has no models configured.`,
+        };
+      }
+
       this.config.config.activeProvider = newProvider.id;
       this.config.config.activeModel = {
         id: firstModel.id,
@@ -397,6 +490,20 @@ To switch providers, use: /provider <provider-id>
     const assistantMessages = history.filter(m => m.role === 'assistant').length;
     const tokenEstimate = this.chatManager.getTokenEstimate();
 
+    // Get active model pricing
+    const activeProvider = this.config.providers.find(
+      p => p.id === this.config.config.activeProvider
+    );
+    const activeModel = activeProvider?.models.find(
+      m => m.id === this.config.config.activeModel.id
+    );
+    const sessionCost = this.chatManager.getSessionCost(activeModel?.pricing);
+
+    let costLine = '';
+    if (sessionCost !== null) {
+      costLine = `  Estimated cost:      $${sessionCost.toFixed(4)}\n`;
+    }
+
     return {
       success: true,
       message: `
@@ -406,8 +513,78 @@ Conversation Statistics:
   Your messages:       ${userMessages}
   Assistant messages:  ${assistantMessages}
   Estimated tokens:    ~${tokenEstimate.toLocaleString()}
-────────────────────────────────────────────────────────────────
+${costLine}────────────────────────────────────────────────────────────────
 `,
+    };
+  }
+
+  /**
+   * Handle /cost command
+   */
+  private handleCost(): CommandResult {
+    const history = this.chatManager.getHistory();
+
+    if (history.length === 0) {
+      return {
+        success: false,
+        message: 'No conversation to analyze',
+      };
+    }
+
+    // Get active model pricing
+    const activeProvider = this.config.providers.find(
+      p => p.id === this.config.config.activeProvider
+    );
+    const activeModel = activeProvider?.models.find(
+      m => m.id === this.config.config.activeModel.id
+    );
+
+    const breakdown = this.chatManager.getCostBreakdown(activeModel?.pricing);
+
+    // Format the cost display
+    let message = `
+Token Usage & Cost Breakdown:
+────────────────────────────────────────────────────────────────
+  Input tokens:        ${breakdown.inputTokens.toLocaleString()}`;
+
+    if (breakdown.inputCost !== null) {
+      message += ` ($${breakdown.inputCost.toFixed(4)})`;
+    }
+
+    message += `
+  Output tokens:       ${breakdown.outputTokens.toLocaleString()}`;
+
+    if (breakdown.outputCost !== null) {
+      message += ` ($${breakdown.outputCost.toFixed(4)})`;
+    }
+
+    message += `
+  Total tokens:        ${breakdown.totalTokens.toLocaleString()}`;
+
+    if (breakdown.totalCost !== null) {
+      message += ` ($${breakdown.totalCost.toFixed(4)})`;
+    }
+
+    // Add pricing information if available
+    if (activeModel?.pricing) {
+      message += `
+
+Pricing for ${activeModel.display_name}:
+  Input:  $${activeModel.pricing.inputTokensPer1M.toFixed(2)} per 1M tokens
+  Output: $${activeModel.pricing.outputTokensPer1M.toFixed(2)} per 1M tokens`;
+    } else {
+      message += `
+
+Note: Pricing information not available for this model.`;
+    }
+
+    message += `
+────────────────────────────────────────────────────────────────
+`;
+
+    return {
+      success: true,
+      message,
     };
   }
 
@@ -419,9 +596,21 @@ Conversation Statistics:
       p => p.id === this.config.config.activeProvider
     );
 
+    const activeModel = activeProvider?.models.find(
+      m => m.id === this.config.config.activeModel.id
+    );
+
     const activeThemeId = this.config.config.activeTheme || 'None';
     const activeTheme = this.config.themes?.find(t => t.id === activeThemeId);
     const themeName = activeTheme?.name || 'No theme';
+
+    let pricingInfo = '';
+    if (activeModel?.pricing) {
+      pricingInfo = `
+  Pricing:
+    Input:   $${activeModel.pricing.inputTokensPer1M.toFixed(2)} per 1M tokens
+    Output:  $${activeModel.pricing.outputTokensPer1M.toFixed(2)} per 1M tokens`;
+    }
 
     return {
       success: true,
@@ -432,7 +621,7 @@ Current Settings:
   Provider:  ${activeProvider?.name || 'Unknown'}
   Model:     ${this.config.config.activeModel.display_name}
   Model ID:  ${this.config.config.activeModel.id}
-  Theme:     ${themeName} (${activeThemeId})
+  Theme:     ${themeName} (${activeThemeId})${pricingInfo}
 ────────────────────────────────────────────────────────────────
 `,
     };

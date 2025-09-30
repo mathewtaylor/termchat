@@ -3,7 +3,7 @@
  */
 
 import OpenAI from 'openai';
-import { BaseProvider } from './base';
+import { BaseProvider, type MessageResponse } from './base';
 
 export class OpenAIProvider extends BaseProvider {
   private client: OpenAI;
@@ -17,7 +17,7 @@ export class OpenAIProvider extends BaseProvider {
     conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>,
     onStreamChunk: (chunk: { text: string; tokenCount: number }) => void,
     signal?: AbortSignal
-  ): Promise<string> {
+  ): Promise<MessageResponse> {
     try {
       // Check if already aborted
       if (signal?.aborted) {
@@ -30,14 +30,16 @@ export class OpenAIProvider extends BaseProvider {
         content: msg.content,
       }));
 
-      // Create streaming request
+      // Create streaming request with usage tracking enabled
       const stream = await this.client.chat.completions.create({
         model: this.modelId,
         messages: messages,
         stream: true,
+        stream_options: { include_usage: true },
       });
 
       let fullResponse = '';
+      let usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined;
 
       // Process the stream
       for await (const chunk of stream) {
@@ -53,9 +55,22 @@ export class OpenAIProvider extends BaseProvider {
           const tokenCount = this.estimateTokens(fullResponse);
           onStreamChunk({ text, tokenCount });
         }
+
+        // Capture usage from the final chunk
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
       }
 
-      return fullResponse;
+      // Return response with actual token usage
+      return {
+        response: fullResponse,
+        usage: {
+          inputTokens: usage?.prompt_tokens || 0,
+          outputTokens: usage?.completion_tokens || 0,
+          totalTokens: usage?.total_tokens || 0,
+        },
+      };
     } catch (error) {
       if (error instanceof OpenAI.APIError) {
         throw new Error(`OpenAI API Error: ${error.message}`);
