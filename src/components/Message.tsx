@@ -24,7 +24,7 @@ export const Message: React.FC<MessageProps> = ({ role, content, timestamp, them
   } else {
     // System messages don't show a prefix
     showPrefix = false;
-    color = 'yellow';
+    color = 'whiteBright';
   }
 
   const timeStr = timestamp ? timestamp.toLocaleTimeString() : '';

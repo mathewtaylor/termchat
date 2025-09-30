@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
@@ -163,11 +163,6 @@ export const ChatUI: React.FC<ChatUIProps> = ({
 
   return (
     <Box flexDirection="column" width="100%" height="100%">
-      {/* Header */}
-      <Box borderStyle="single" borderColor="blue" paddingX={1}>
-        <Text bold>TermChat - {config.config.activeModel.display_name}</Text>
-      </Box>
-
       {/* Chat History */}
       <Box flexDirection="column" flexGrow={1} paddingX={1} paddingY={1}>
         {messages.map((msg, i) => (
@@ -182,13 +177,8 @@ export const ChatUI: React.FC<ChatUIProps> = ({
         )}
       </Box>
 
-      {/* Status Bar */}
-      <Box borderStyle="single" paddingX={1}>
-        <Text dimColor>[Enter] Send • [Esc] Clear • [Ctrl+C] Exit</Text>
-      </Box>
-
       {/* Input Box */}
-      <Box borderStyle="single" borderColor="green" paddingX={1}>
+      <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <TextInput
           value={input}
           onChange={setInput}
@@ -198,6 +188,12 @@ export const ChatUI: React.FC<ChatUIProps> = ({
           }}
           placeholder="Type your message..."
         />
+      </Box>
+
+      {/* Status Bar */}
+      <Box paddingX={1} justifyContent="space-between">
+        <Text dimColor>[Enter] Send • [Esc] Clear • [Ctrl+C] Exit</Text>
+        <Text dimColor>{config.config.activeModel.display_name}</Text>
       </Box>
     </Box>
   );
