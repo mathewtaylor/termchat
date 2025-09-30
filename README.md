@@ -52,4 +52,4 @@ Type `/help` in the app to see all available commands.
 
 ## License
 
-MIT
+Apache License 2.0
