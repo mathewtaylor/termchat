@@ -82,16 +82,17 @@ export class UIRenderer {
     const width = this.getTerminalWidth();
     const helpText = 'Type /help for commands';
     const lineWidth = Math.min(width, 60);
-    const padding = lineWidth - helpText.length;
+    const padding = Math.floor((lineWidth - helpText.length) / 2);
 
     // Dim color for subtle separator
     const dim = '\x1b[2m';
     const reset = '\x1b[0m';
 
-    // Create line with help text on the right
-    const line = dim + '─'.repeat(Math.max(0, padding)) + reset + helpText;
+    // Center the help text above the line, then show line, then space
+    const centeredHelp = ' '.repeat(Math.max(0, padding)) + helpText;
+    const line = dim + '─'.repeat(lineWidth) + reset;
 
-    return line;
+    return [centeredHelp, line, ''].join('\n');
   }
 
   /**
