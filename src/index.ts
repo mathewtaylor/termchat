@@ -39,8 +39,8 @@ async function main() {
       // Intro file not found, skip silently
     }
 
-    // Show model info
-    console.log(`Using: ${config.config.activeModel.display_name}`);
+    // Show model info with robot emoji
+    console.log(`🤖 ${config.config.activeModel.display_name}`);
     console.log('');
   } catch (error) {
     if (error instanceof Error) {
@@ -98,12 +98,12 @@ async function main() {
       }
 
       console.log('');
-      console.log(ui.renderFooter());
       rl.prompt();
       return;
     }
 
     // Prepare for assistant response (no need to echo user input, they just typed it)
+    console.log(''); // Add spacing before AI response
     const color = config.config.theme?.fontColours.ai.value || '';
     const reset = '\x1b[0m';
     process.stdout.write(`${color}Claude:${reset}\n`);
@@ -119,8 +119,8 @@ async function main() {
         process.stdout.write(`${color}${chunk}${reset}`);
       });
 
-      // Done streaming - add blank line
-      console.log('\n');
+      // Done streaming - add spacing
+      console.log('\n\n');
 
     } catch (error) {
       console.log('');
@@ -132,8 +132,7 @@ async function main() {
       console.log('');
     }
 
-    // Redraw footer and show prompt
-    console.log(ui.renderFooter());
+    // Show prompt
     rl.prompt();
   });
 
