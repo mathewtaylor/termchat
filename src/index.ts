@@ -64,6 +64,9 @@ async function main() {
       // Intro file not found, use default welcome message
     }
 
+    // Clear the screen before rendering UI
+    console.clear();
+
     // Render the Ink UI
     render(
       React.createElement(ChatUI, {

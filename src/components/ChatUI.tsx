@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import TextInput from 'ink-text-input';
+import Spinner from 'ink-spinner';
 import { Message } from './Message';
 import type { ChatManager } from '../chat';
 import type { AppConfig, Theme } from '../types';
@@ -32,6 +33,7 @@ export const ChatUI: React.FC<ChatUIProps> = ({
   ]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { exit } = useApp();
 
   // Handle global keyboard shortcuts
@@ -58,6 +60,7 @@ export const ChatUI: React.FC<ChatUIProps> = ({
 
     // Regular message
     setIsProcessing(true);
+    setIsLoading(true);
 
     // Add user message
     const userMessage: MessageData = {
@@ -76,9 +79,16 @@ export const ChatUI: React.FC<ChatUIProps> = ({
     setMessages(prev => [...prev, assistantMessage]);
 
     let assistantContent = '';
+    let firstChunk = true;
 
     try {
       await chatManager.sendMessage(trimmed, (chunk) => {
+        // On first chunk, hide loading spinner
+        if (firstChunk) {
+          setIsLoading(false);
+          firstChunk = false;
+        }
+
         assistantContent += chunk;
 
         // Update the last message (assistant) with new content
@@ -96,8 +106,10 @@ export const ChatUI: React.FC<ChatUIProps> = ({
       });
 
       setIsProcessing(false);
+      setIsLoading(false);
     } catch (error) {
       setIsProcessing(false);
+      setIsLoading(false);
 
       // Add error message
       setMessages(prev => [
@@ -161,6 +173,13 @@ export const ChatUI: React.FC<ChatUIProps> = ({
         {messages.map((msg, i) => (
           <Message key={i} {...msg} theme={theme} />
         ))}
+        {isLoading && (
+          <Box marginTop={1}>
+            <Text color="green">
+              <Spinner type="dots" />
+            </Text>
+          </Box>
+        )}
       </Box>
 
       {/* Status Bar */}
@@ -170,7 +189,6 @@ export const ChatUI: React.FC<ChatUIProps> = ({
 
       {/* Input Box */}
       <Box borderStyle="single" borderColor="green" paddingX={1}>
-        <Text color="gray">💬 </Text>
         <TextInput
           value={input}
           onChange={setInput}

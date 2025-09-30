@@ -12,6 +12,7 @@ export interface MessageProps {
 export const Message: React.FC<MessageProps> = ({ role, content, timestamp, theme }) => {
   let color = 'white';
   let prefix = '';
+  let showPrefix = true;
 
   if (role === 'user') {
     prefix = '💬 You:';
@@ -21,7 +22,8 @@ export const Message: React.FC<MessageProps> = ({ role, content, timestamp, them
     prefix = '🤖 AI:';
     color = theme?.fontColours.ai.value ? extractColorFromAnsi(theme.fontColours.ai.value) : 'green';
   } else {
-    prefix = '⚙️  System:';
+    // System messages don't show a prefix
+    showPrefix = false;
     color = 'yellow';
   }
 
@@ -29,17 +31,19 @@ export const Message: React.FC<MessageProps> = ({ role, content, timestamp, them
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Box>
-        <Text color={color} bold>
-          {prefix}
-        </Text>
-        {timestamp && (
-          <Text color="gray" dimColor>
-            {' '}
-            {timeStr}
+      {showPrefix && (
+        <Box>
+          <Text color={color} bold>
+            {prefix}
           </Text>
-        )}
-      </Box>
+          {timestamp && (
+            <Text color="gray" dimColor>
+              {' '}
+              {timeStr}
+            </Text>
+          )}
+        </Box>
+      )}
       <Text color={color}>{content}</Text>
     </Box>
   );
