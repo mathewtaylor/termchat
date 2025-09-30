@@ -122,4 +122,11 @@ export class UIRenderer {
   getAIColor(): string {
     return this.theme?.fontColours.ai.value || '';
   }
+
+  /**
+   * Get the user color from current theme
+   */
+  getUserColor(): string {
+    return this.theme?.fontColours.user.value || '';
+  }
 }

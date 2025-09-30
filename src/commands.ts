@@ -13,6 +13,7 @@ export interface CommandResult {
   message: string;
   shouldExit?: boolean;
   shouldClearScreen?: boolean;
+  shouldUpdatePrompt?: boolean;
   data?: any;
 }
 
@@ -320,6 +321,7 @@ To switch themes, use: /theme <theme-id>
       return {
         success: true,
         message: `✓ Theme switched to "${newTheme.name}"`,
+        shouldUpdatePrompt: true,
       };
     } catch (error) {
       return {

@@ -53,11 +53,13 @@ async function main() {
     process.exit(1);
   }
 
-  // Set up readline interface
+  // Set up readline interface with colored prompt
+  const userColor = ui.getUserColor();
+  const reset = '\x1b[0m';
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: '💬 ',
+    prompt: `${userColor}💬 ${reset}`,
   });
 
   // Display footer
@@ -94,6 +96,12 @@ async function main() {
         if (result.shouldExit) {
           rl.close();
           process.exit(0);
+        }
+
+        if (result.shouldUpdatePrompt) {
+          const newUserColor = ui.getUserColor();
+          const reset = '\x1b[0m';
+          rl.setPrompt(`${newUserColor}💬 ${reset}`);
         }
       } catch (error) {
         console.log(ui.renderError(error instanceof Error ? error.message : 'Command failed'));
