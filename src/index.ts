@@ -45,31 +45,22 @@ async function main() {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    prompt: '💬 ',
   });
 
   // Display footer
   console.log(ui.renderFooter());
 
-  // Move cursor to input position
-  process.stdout.write('\x1b[2A'); // Move up 2 lines
-  process.stdout.write('\x1b[19C'); // Move right to after "💬 Your message: "
+  // Show the prompt
+  rl.prompt();
 
   rl.on('line', async (line: string) => {
     const input = line.trim();
 
     if (!input) {
-      // Redraw footer and reposition cursor
-      process.stdout.write('\x1b[2A');
-      process.stdout.write('\x1b[19C');
+      rl.prompt();
       return;
     }
-
-    // Clear the input line and footer
-    process.stdout.write('\x1b[2K\r'); // Clear current line
-    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
-    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
-    process.stdout.write('\x1b[1B\x1b[2K\r'); // Move down and clear
-    process.stdout.write('\x1b[3A'); // Move back up
 
     // Handle commands
     if (commandHandler.isCommand(input)) {
@@ -96,9 +87,9 @@ async function main() {
         console.log(ui.renderError(error instanceof Error ? error.message : 'Command failed'));
       }
 
+      console.log('');
       console.log(ui.renderFooter());
-      process.stdout.write('\x1b[2A');
-      process.stdout.write('\x1b[19C');
+      rl.prompt();
       return;
     }
 
@@ -115,6 +106,7 @@ async function main() {
     const assistantStartTime = new Date();
     let assistantContent = '';
     let currentTokenCount = 0;
+    let lastLineCount = 0;
 
     try {
       await chatManager.sendMessage(input, (chunk, tokenCount) => {
@@ -130,17 +122,24 @@ async function main() {
           isStreaming: true,
         };
 
-        // Calculate how many lines to move up
         const renderedBubble = ui.renderMessageBubble(streamingMessage);
         const lineCount = renderedBubble.split('\n').length;
 
-        // Move cursor up and clear
-        if (assistantContent.length > chunk.length) {
-          process.stdout.write(`\x1b[${lineCount}A`);
+        // Move cursor up to overwrite previous bubble
+        if (lastLineCount > 0) {
+          process.stdout.write(`\x1b[${lastLineCount}A`);
         }
 
-        // Render the updated bubble
-        process.stdout.write('\r' + renderedBubble + '\n');
+        // Clear lines and render updated bubble
+        for (let i = 0; i < lastLineCount; i++) {
+          process.stdout.write('\x1b[2K\x1b[1B');
+        }
+        if (lastLineCount > 0) {
+          process.stdout.write(`\x1b[${lastLineCount}A`);
+        }
+
+        console.log(renderedBubble);
+        lastLineCount = lineCount;
       });
 
       // Final render without streaming indicator
@@ -152,14 +151,20 @@ async function main() {
         isStreaming: false,
       };
 
-      const finalBubble = ui.renderMessageBubble(finalMessage);
-      const lineCount = finalBubble.split('\n').length;
-      process.stdout.write(`\x1b[${lineCount + 1}A`);
-      console.log(finalBubble);
+      // Move up and clear the streaming version
+      if (lastLineCount > 0) {
+        process.stdout.write(`\x1b[${lastLineCount}A`);
+        for (let i = 0; i < lastLineCount; i++) {
+          process.stdout.write('\x1b[2K\x1b[1B');
+        }
+        process.stdout.write(`\x1b[${lastLineCount}A`);
+      }
+
+      // Render final version
+      console.log(ui.renderMessageBubble(finalMessage));
       console.log('');
 
     } catch (error) {
-      console.log('');
       if (error instanceof Error) {
         console.log(ui.renderError(error.message));
       } else {
@@ -168,10 +173,9 @@ async function main() {
       console.log('');
     }
 
-    // Redraw footer and reposition cursor
+    // Redraw footer and show prompt
     console.log(ui.renderFooter());
-    process.stdout.write('\x1b[2A');
-    process.stdout.write('\x1b[19C');
+    rl.prompt();
   });
 
   rl.on('close', () => {

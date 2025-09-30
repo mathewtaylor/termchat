@@ -86,19 +86,15 @@ export class UIRenderer {
   }
 
   /**
-   * Render the footer/input area
+   * Render the footer separator (input area goes below this)
    */
-  renderFooter(showHistory: boolean = false): string {
+  renderFooter(): string {
     const width = this.getTerminalWidth();
-    const historyIndicator = showHistory ? '[↑ History]  ' : '';
-    const promptText = `💬 Your message: `;
-
     const helpText = 'Press Enter to send • /exit to quit • /help for commands';
     const helpPadding = Math.max(0, width - 4 - helpText.length);
 
     return [
       `├${'─'.repeat(width - 2)}┤`,
-      `│ ${promptText}${' '.repeat(Math.max(0, width - 4 - promptText.length - historyIndicator.length))}${historyIndicator}│`,
       `│ ${helpText}${' '.repeat(helpPadding)} │`,
       `└${'─'.repeat(width - 2)}┘`,
     ].join('\n');
