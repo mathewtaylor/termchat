@@ -30,8 +30,6 @@ async function main() {
     ui.clearScreen();
     console.log(ui.renderHeader(config.config.activeModel.display_name, activeProvider.name));
     console.log('');
-    console.log(ui.renderInfo('Welcome to Terminal Chat! Type /help for commands.'));
-    console.log('');
   } catch (error) {
     if (error instanceof Error) {
       console.error(`❌ Configuration Error: ${error.message}`);
@@ -103,68 +101,25 @@ async function main() {
     console.log('');
 
     // Prepare for assistant response
+    console.log('Claude:');
+
     const assistantStartTime = new Date();
     let assistantContent = '';
-    let currentTokenCount = 0;
-    let lastLineCount = 0;
+    let isFirstChunk = true;
 
     try {
       await chatManager.sendMessage(input, (chunk, tokenCount) => {
         assistantContent += chunk;
-        currentTokenCount = tokenCount;
 
-        // Update display (clear and redraw streaming message)
-        const streamingMessage: MessageDisplay = {
-          role: 'assistant',
-          content: assistantContent,
-          timestamp: assistantStartTime,
-          tokenCount: currentTokenCount,
-          isStreaming: true,
-        };
-
-        const renderedBubble = ui.renderMessageBubble(streamingMessage);
-        const lineCount = renderedBubble.split('\n').length;
-
-        // Move cursor up to overwrite previous bubble
-        if (lastLineCount > 0) {
-          process.stdout.write(`\x1b[${lastLineCount}A`);
-        }
-
-        // Clear lines and render updated bubble
-        for (let i = 0; i < lastLineCount; i++) {
-          process.stdout.write('\x1b[2K\x1b[1B');
-        }
-        if (lastLineCount > 0) {
-          process.stdout.write(`\x1b[${lastLineCount}A`);
-        }
-
-        console.log(renderedBubble);
-        lastLineCount = lineCount;
+        // Just write the chunk as it arrives
+        process.stdout.write(chunk);
       });
 
-      // Final render without streaming indicator
-      const finalMessage: MessageDisplay = {
-        role: 'assistant',
-        content: assistantContent,
-        timestamp: assistantStartTime,
-        tokenCount: currentTokenCount,
-        isStreaming: false,
-      };
-
-      // Move up and clear the streaming version
-      if (lastLineCount > 0) {
-        process.stdout.write(`\x1b[${lastLineCount}A`);
-        for (let i = 0; i < lastLineCount; i++) {
-          process.stdout.write('\x1b[2K\x1b[1B');
-        }
-        process.stdout.write(`\x1b[${lastLineCount}A`);
-      }
-
-      // Render final version
-      console.log(ui.renderMessageBubble(finalMessage));
-      console.log('');
+      // Done streaming - add blank line
+      console.log('\n');
 
     } catch (error) {
+      console.log('');
       if (error instanceof Error) {
         console.log(ui.renderError(error.message));
       } else {
