@@ -1,0 +1,54 @@
+name: Publish to npm
+
+# Trigger when code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+
+# Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # Only run if the commit is not from the bot (prevents loops)
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version comparison
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Publish to npm (if version changed)
+        id: publish
+        uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
+          access: public
+          # Optional: Create GitHub release when published
+          # Uncomment the line below to enable
+          # tag: v${{ steps.package-version.outputs.version }}
+
+      - name: Publish Status
+        if: steps.publish.outputs.type != 'none'
+        run: |
+          echo "✅ Published version ${{ steps.publish.outputs.version }} to npm"
+          echo "📦 Package: ${{ steps.publish.outputs.name }}"
+          echo "🔗 View at: https://www.npmjs.com/package/${{ steps.publish.outputs.name }}"
+
+      - name: No Publish
+        if: steps.publish.outputs.type == 'none'
+        run: |
+          echo "ℹ️ Version ${{ steps.publish.outputs.version }} is already published to npm"
+          echo "💡 Bump the version in package.json to trigger a new publish"

@@ -1,6 +1,22 @@
 TERMCHAT RELEASE NOTES
 ======================
 
+Version 2.1.0 - 2025-01-30
+--------------------------
+
+npm Package Publishing
+
+Changed:
+  • Package name: Now published as @binaryworks/termchat (scoped package)
+  • Install commands updated to use scoped package name
+
+Added:
+  • Global installation support via npm/bun
+  • CLI commands: termchat and tc (short alias)
+  • Install with: bun install -g @binaryworks/termchat
+                 npm install -g @binaryworks/termchat
+
+
 Version 2.0.0 - 2025-01-30
 --------------------------
 

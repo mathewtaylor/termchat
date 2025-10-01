@@ -1,15 +1,57 @@
-import { readFile, writeFile } from 'fs/promises';
-import { resolve } from 'path';
+import { readFile, writeFile, mkdir } from 'fs/promises';
+import { resolve, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import type { AppConfig, Provider, Theme, DefaultsConfig, UserConfig, LegacyAppConfig } from './types';
+
+/**
+ * Get the directory containing this module (config.ts)
+ * This ensures defaults.json is found relative to the installed package, not the user's cwd
+ */
+function getPackageDir(): string {
+  const currentFile = fileURLToPath(import.meta.url);
+  return dirname(currentFile);
+}
+
+/**
+ * Get the termchat user data directory (~/.termchat)
+ * This is where we store config.json and conversations/
+ */
+export function getTermChatDir(): string {
+  return join(homedir(), '.termchat');
+}
+
+/**
+ * Get the path to the user's config file
+ */
+export function getDefaultConfigPath(): string {
+  return join(getTermChatDir(), 'config.json');
+}
+
+/**
+ * Get the path to the conversations directory
+ */
+export function getConversationsDir(): string {
+  return join(getTermChatDir(), 'conversations');
+}
 
 export class ConfigLoader {
   private configPath: string;
   private defaultsPath: string;
   private userConfig: UserConfig | null = null;
 
-  constructor(configPath: string = './config.json', defaultsPath: string = './src/defaults.json') {
-    this.configPath = resolve(configPath);
-    this.defaultsPath = resolve(defaultsPath);
+  constructor(configPath?: string, defaultsPath?: string) {
+    // config.json defaults to ~/.termchat/config.json
+    // Can be overridden with explicit path for testing or custom locations
+    this.configPath = configPath
+      ? resolve(configPath)
+      : getDefaultConfigPath();
+
+    // defaults.json resolves relative to the installed package directory
+    // If no defaultsPath provided, use defaults.json in the same directory as this file
+    this.defaultsPath = defaultsPath
+      ? resolve(defaultsPath)
+      : join(getPackageDir(), 'defaults.json');
   }
 
   async load(): Promise<AppConfig> {
@@ -279,6 +321,10 @@ export class ConfigLoader {
 
   async save(config: AppConfig): Promise<void> {
     try {
+      // Ensure the parent directory exists (e.g., ~/.termchat)
+      const configDir = dirname(this.configPath);
+      await mkdir(configDir, { recursive: true });
+
       // Extract user config from full AppConfig
       const apiKeys: { [providerId: string]: string } = {};
       for (const provider of config.providers) {

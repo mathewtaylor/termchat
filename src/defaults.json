@@ -46,8 +46,8 @@
           "id": "gpt-5-nano-2025-08-07",
           "display_name": "GPT-5 Nano",
           "pricing": {
-            "inputTokensPer1M": 0.10,
-            "outputTokensPer1M": 0.80
+            "inputTokensPer1M": 0.05,
+            "outputTokensPer1M": 0.40
           }
         },
         {
