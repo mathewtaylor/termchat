@@ -4,7 +4,7 @@
 
 import type { AppConfig } from './types';
 import { ChatManager } from './chat';
-import { ConfigLoader } from './config';
+import { ConfigLoader, getConversationsDir } from './config';
 import { UIRenderer } from './ui';
 import { ProviderFactory } from './providers/factory';
 import { SetupManager } from './setup';
@@ -445,7 +445,7 @@ To switch providers, use: /provider <provider-id>
 
     try {
       // Create conversations directory if it doesn't exist
-      const conversationsDir = './conversations';
+      const conversationsDir = getConversationsDir();
       await mkdir(conversationsDir, { recursive: true });
 
       // Generate timestamp-based filename if not provided

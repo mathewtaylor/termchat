@@ -8,6 +8,12 @@
     "termchat": "./bin/cli.js",
     "tc": "./bin/cli.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "start": "bun run src/index.ts"
   },
