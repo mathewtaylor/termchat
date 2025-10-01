@@ -294,6 +294,13 @@ export class ConfigLoader {
   }
 
   /**
+   * Get the first provider that has an API key configured
+   */
+  getFirstConfiguredProvider(config: AppConfig): Provider | undefined {
+    return config.providers.find(p => p.apiKey && p.apiKey.length > 0);
+  }
+
+  /**
    * Check if setup is needed (no API keys configured)
    */
   needsSetup(config: AppConfig): boolean {
