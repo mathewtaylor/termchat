@@ -23,10 +23,10 @@ Install globally to use `termchat` or `tc` from anywhere:
 
 ```bash
 # Using Bun (recommended)
-bun install -g termchat
+bun install -g @binaryworks/termchat
 
 # Or using npm (requires Bun runtime)
-npm install -g termchat
+npm install -g @binaryworks/termchat
 ```
 
 Then run:

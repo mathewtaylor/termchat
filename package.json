@@ -1,5 +1,5 @@
 {
-  "name": "termchat",
+  "name": "@binaryworks/termchat",
   "version": "2.1.0",
   "description": "A beautiful terminal-based AI chat application with multi-provider support (Anthropic Claude, OpenAI GPT)",
   "module": "src/index.ts",
