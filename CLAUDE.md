@@ -157,8 +157,8 @@ All providers implement `BaseProvider.sendMessage()`:
 - **UI Framework**: Ink 6.3.1 (React-based TUI, same as Claude Code uses)
 - **No double-input issues**: Ink's TextInput handles input correctly (previous blessed library had bugs)
 - **Word wrapping**: Handled automatically by Ink's TextInput component
-- **Conversation exports**: Saved to `conversations/` directory (auto-created)
+- **Conversation exports**: Saved to `~/.termchat/conversations/` directory (auto-created)
 - **Token estimates**: Rough approximation (4 chars ≈ 1 token) for context limits
-- **Intro ASCII art**: Optional `intro.txt` file displays on startup if present
+- **Intro ASCII art**: Embedded in [src/intro.ts](src/intro.ts) and displays on startup
 - **Version**: Stored in [src/version.ts](src/version.ts)
 - **Setup flow**: Automatic first-time setup if no API keys found, can re-run with `/setup` command
