@@ -67,6 +67,31 @@ export class SetupManager {
       return false;
     }
 
+    // Switch to the first configured provider if the current active provider isn't configured
+    const activeProvider = this.configLoader.getActiveProvider(this.config);
+    if (!activeProvider?.apiKey) {
+      const firstConfigured = this.configLoader.getFirstConfiguredProvider(this.config);
+      if (firstConfigured) {
+        console.log(`\n✓ Setting active provider to ${firstConfigured.name}...`);
+
+        // Update active provider
+        this.config.config.activeProvider = firstConfigured.id;
+
+        // Update active model to first model of the new provider
+        const firstModel = firstConfigured.models[0];
+        if (firstModel) {
+          this.config.config.activeModel = {
+            id: firstModel.id,
+            display_name: firstModel.display_name,
+            pricing: firstModel.pricing,
+          };
+        }
+
+        // Save the updated config
+        await this.configLoader.save(this.config);
+      }
+    }
+
     console.log('\n✓ Setup complete! Starting TermChat...\n');
     return true;
   }
