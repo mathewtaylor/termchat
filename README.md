@@ -15,21 +15,48 @@ Supports multiple AI providers including **Anthropic** (Claude) and **OpenAI** (
 - **Conversation context** - Full chat history maintained throughout your session
 - **Highly configurable** - Multiple models, custom themes, and instant switching
 
-## Quick Start
+## Installation
+
+### Global Installation (Recommended)
+
+Install globally to use `termchat` or `tc` from anywhere:
 
 ```bash
+# Using Bun (recommended)
+bun install -g termchat
+
+# Or using npm (requires Bun runtime)
+npm install -g termchat
+```
+
+Then run:
+```bash
+termchat
+# or use the short alias
+tc
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/mathewtaylor/termchat.git
+cd termchat
+
 # Install dependencies
 bun install
 
 # Set up your config
 cp config.example.json config.json
-# Edit config.json and add your API key(s) for Anthropic and/or OpenAI
+# Edit config.json and add your API key(s)
 
 # Start chatting
 bun start
 ```
 
-For detailed setup, configuration, and usage instructions, see [DEVELOPMENT.md](DEVELOPMENT.md).
+On first run, you'll be guided through an interactive setup to configure your API keys.
+
+For detailed setup and configuration instructions, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Features
 

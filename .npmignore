@@ -1,0 +1,50 @@
+# Development files
+.claude/
+.git/
+.gitignore
+.DS_Store
+.idea/
+.vscode/
+
+# User data (should never be published)
+config.json
+conversations/
+
+# Documentation (keep README.md, CHANGELOG.md)
+*.md
+!README.md
+!CHANGELOG.md
+
+# Build artifacts
+dist/
+out/
+*.tgz
+coverage/
+*.lcov
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+tests/
+test/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Cache
+.cache/
+*.tsbuildinfo
+.eslintcache
+
+# Bun specific
+bun.lockb
