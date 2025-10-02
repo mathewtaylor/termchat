@@ -44,6 +44,9 @@ export const ChatUI: React.FC<ChatUIProps> = ({
       exit();
       process.exit(0);
     }
+    if (key.escape) {
+      setInput('');
+    }
   });
 
   /**
@@ -245,7 +248,7 @@ export const ChatUI: React.FC<ChatUIProps> = ({
 
       {/* Status Bar */}
       <Box paddingX={1} justifyContent="space-between">
-        <Text dimColor>[Enter] Send  [Esc] Clear  [/exit] Exit</Text>
+        <Text dimColor>[Enter] Send  [Esc] Clear  [/help] Help  [/exit] Exit</Text>
         <Text dimColor>{getModelInfo()}</Text>
       </Box>
     </Box>
