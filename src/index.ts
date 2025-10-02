@@ -1,6 +1,5 @@
 import React from 'react';
 import { render } from 'ink';
-import { readFile } from 'fs/promises';
 import { ConfigLoader } from './config';
 import { ChatManager } from './chat';
 import { UIRenderer } from './ui';
@@ -8,7 +7,7 @@ import { CommandHandler } from './commands';
 import { ProviderFactory } from './providers/factory';
 import { SetupManager } from './setup';
 import { ChatUI } from './components/ChatUI';
-import { VERSION } from './version';
+import { getIntroBanner } from './intro';
 import type { AppConfig } from './types';
 
 async function main() {
@@ -55,14 +54,8 @@ async function main() {
     ui = new UIRenderer(activeTheme);
     commandHandler = new CommandHandler(chatManager, config, configLoader, ui);
 
-    // Prepare welcome message
-    let welcomeMessage = `Welcome to TermChat v${VERSION}!\nType your message below or /help for commands.`;
-    try {
-      const introText = await readFile('./intro.txt', 'utf-8');
-      welcomeMessage = introText;
-    } catch {
-      // Intro file not found, use default welcome message
-    }
+    // Get welcome message with ASCII art banner
+    const welcomeMessage = getIntroBanner();
 
     // Clear the screen before rendering UI
     console.clear();
